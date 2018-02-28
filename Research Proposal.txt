@@ -1,0 +1,31 @@
+# Problem Setting
+
+Our goal is to train a team of autonomous drones to explore an unknown area as most efficient
+as possible in order to find a given target. This setting leads to a wide range of problems.
+We want to focus on the following aspects, whereby the order represents our priority.
+
+1.	Synchronisation
+Every drone in the team must synchronize with other drones to avoid work that has already been done.
+This implies that the drone’s individual decision-making, i.e. path planning depends not only on its
+own past decisions and its current environment, but also on decisions of other drones. The decision-making
+may be done by a central control drone or by all drones simultaneously. This setting further implies that
+the connection to other drones may get lost if the drones swarm out too far from each other.
+
+2.	SLAM
+Every drone must explore its surrounding area in order to find the target. This is known as Simultaneous 
+Localisation and Mapping (SLAM). This can be done using any available sensor input, e.g. camera frames and GPS.
+
+3.	Object Recognition
+The team of drones should be able to identify any given target and communicate this event back to the operator.
+
+Assumptions
+-	Search area is limited beforehand by the operator
+-	Target is easy to identify
+-	Exploration is time-critical
+-	Drones are able to fly stable in the given direction and are already able to avoid small obstacles (trees, power poles, etc.) by themselves.
+
+Out of scope:
+-	Technical details about hardware and communication
+-	Detection of many targets in the given area
+-	Optimization with regard to most efficient use of hardware resources
+
