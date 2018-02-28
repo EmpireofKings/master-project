@@ -1,15 +1,15 @@
 ﻿# Problem Setting
 
-Our goal is to train a team of autonomous drones to explore an unknown area as most efficient
+Our goal is to train a team of autonomous drones to explore an unknown area as efficiently
 as possible in order to find a given target. This setting leads to a wide range of problems.
 We want to focus on the following aspects, whereby the order represents our priority.
 
 1.	Synchronisation
 Every drone in the team must synchronize with other drones to avoid work that has already been done.
 This implies that the drone’s individual decision-making, i.e. path planning depends not only on its
-own past decisions and its current environment, but also on decisions of other drones. The decision-making
+own past decisions and its current environment, but also on decisions made by other drones. The decision-making
 may be done by a central control drone or by all drones simultaneously. This setting further implies that
-the connection to other drones may get lost if the drones swarm out too far from each other.
+the connection to other drones may get lost if the drones travel too far from each other.
 
 2.	SLAM
 Every drone must explore its surrounding area in order to find the target. This is known as Simultaneous 
@@ -25,39 +25,38 @@ Assumptions
 -	Drones are able to fly stable in the given direction and are already able to avoid small obstacles (trees, power poles, etc.) by themselves.
 
 Out of scope:
--	Technical details about hardware and communication
--	Detection of many targets in the given area
+-	Technical details about drone hardware and communication
 -	Optimization with regard to most efficient use of hardware resources
 
 #State of the art
 Existing
---Reinforcement learning for a single bot, search and rescue
---Methods to acheive shortest path(RL)
---Mostly tested in simulation,not implemented in real-time
+--Reinforcement Learning (RL) for a single drone, search and rescue
+--Methods to achieve shortest path (RL)
+--Mostly tested in simulation, not implemented in real-time
 
-We have to incorporate both the ideas
+We have to incorporate both Deep Learning and Reinforcement Learning
 
 --Delay between action and rewards
---DL assume independent, while in RL states are highly correlated
+--Deep Learning (DL) assumes independent actions, while in RL states are highly correlated
 --Effectivenss is dependent on the exploration strategy used
 --Frontier exploration
 --How well does it resemble the real-world scenario
 
 To do
---learn collision avoidance
+--Learn collision avoidance
 --exploration
---victim discovery and targeted exploration
+--victim discovery and identification
 
 Papers
---Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search a.pdf
---Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs.pdf
+--Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search
+--Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs
 
 
 #Data Foundation
 Our ultimate aim is to use a team of autonomous drones for Search and Rescue missions via simulations. Hence the requirement for real time data is not mandatory.
 The simulator uses plugin that can you can drop into any existing, or new, unreal environment. It can generate training data through images for each frame.
 A more complex way to generate training data is through Application programming interfaces (API). These APIs collect sensor and ground truth data from the drones, as well as various images. With their help, the code used to test drones in the simulator can be transferred to an offboard computer and used on real drones
-The following are a couple of simulation platforms which will be evaluated in due course for its complexity, performance, financial cost and hardware requirements:
+The following are simulation platforms which will be evaluated in due course for its complexity, performance, financial cost and hardware requirements:
 •	SITL (Software In The Loop) most commonly used by developers. 
 •	Gazebo is the official DARPA virtual robotics simulator
 •	XPlane-10 a commercial flight simulator with a rich 3D interface
