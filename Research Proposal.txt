@@ -48,3 +48,6 @@ To do
 --exploration
 --victim discovery and targeted exploration
 
+Papers
+--Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search a.pdf
+--Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs.pdf
