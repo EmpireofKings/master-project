@@ -29,3 +29,22 @@ Out of scope:
 -	Detection of many targets in the given area
 -	Optimization with regard to most efficient use of hardware resources
 
+#State of the art
+Existing
+--Reinforcement learning for a single bot, search and rescue
+--Methods to acheive shortest path(RL)
+--Mostly tested in simulation,not implemented in real-time
+
+We have to incorporate both the ideas
+
+--Delay between action and rewards
+--DL assume independent, while in RL states are highly correlated
+--Effectivenss is dependent on the exploration strategy used
+--Frontier exploration
+--How well does it resemble the real-world scenario
+
+To do
+--learn collision avoidance
+--exploration
+--victim discovery and targeted exploration
+
