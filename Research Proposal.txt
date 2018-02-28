@@ -34,7 +34,7 @@ Out of scope:
 	
 	The major areas of focus in the literature is to overcome the following 
 		1. The considerable delay between action and rewards in a system
-		2. Deep learning works on the assumption that the input variables are independent, while the states in reinforcement        learning are highly correlated
+		2. Deep learning works on the assumption that the input variables are independent, while the states in    reinforcement learning are highly correlated
 		3. The effectiveness of the algorithm is dependent on the exploration strategy used
 	
 	Frontier exploration is considered a better method, but was not implemented in the papers reviewed due to software constraints, in addition to the existing simulation we would like to analyze frontier exploration and also keep a close check on how well does this resemble the real-world scenario. The project aims to synchronize a fleet of drones to learn collision avoidance, find better exploration techniques along with victim discovery and targeted exploration.
