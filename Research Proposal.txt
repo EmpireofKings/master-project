@@ -1,4 +1,4 @@
-# Problem Setting
+﻿# Problem Setting
 
 Our goal is to train a team of autonomous drones to explore an unknown area as most efficient
 as possible in order to find a given target. This setting leads to a wide range of problems.
@@ -64,12 +64,29 @@ The following are a couple of simulation platforms which will be evaluated in du
 •	RealFlight a commercial flight simulator with a rich 3D interface and ability to design custom vehicles
 •	AirSim :platform for artificial intelligence (AI) research to experiment with deep learning, computer vision and reinforcement learning algorithms for autonomous vehicles.
 
+#Research Idea
+The experiment will focus on developing a novel reward function. Using a combination or subset of the following parameters will be tested to evaluate performance and provide an optimal solution. 
+distance to other drones - sufficiently far such that coverage is not doubled but to also ensure that coverage is not missed.  It will be weighted to be more lenient on allowing double coverage.
+exploration feedback - maximize coverage as quickly as possible
+hard or soft coverage techniques - drones coverage is gradient - more confident nearby and less confident far away
+maximum number of nearby drones - penalizes drones that cluster together.
+different tiers of drones with different reward functions - one tier focuses on maximization of distance covered whereas the other focuses on filling in gaps left by first tier.
+This will be compared to current State of Art techniques.
+
 # Tangible outcomes
 We will be making use of the open source software for our project and provide results via software documentation (story about requirements, design, implementation). In addition to this, we will also be including a demo or a tutorial in the form a video representation. The video will depict the simulation of the drone navigating through a known/unknown path in search of a particular object/person, while avoiding obstacles on the way. The data regarding the location and optimal path will be transmitted to the central hub after which the rescue mission can take place.
 
+#Work Plan
+Preparation: [April - May] Evaluate and analyze simluator systems and perform background research
+Implementation: [April - June] Implement experiment design and State of Art to current baseline
+Testing: [May-Oct] Evaluate experiments, adjust algorithms, re-evaluate experiment
+Finalization: [Presentation 1: May-June, Presentation 2: Sep-Oct, Final Presentation and Documentation: Oct-Dec] Prepare presentations, report, and software documentation
+
+
 # Team
 Our team consists of
-- Benjamin Hogstad
+- Benjamin Hogstad (277456) - Received a Bachelors of Science in Mathematics with a Chemistry minor from the University of Oregon.  Prior experience in a regulated chemical laboratory as quality assurance and project manager. United States of America
+
 
 - Ramya Raghuraman
 
