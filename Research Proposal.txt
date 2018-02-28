@@ -28,32 +28,26 @@ Out of scope:
 -	Technical details about drone hardware and communication
 -	Optimization with regard to most efficient use of hardware resources
 
-#State of the art
-Existing
---Reinforcement Learning (RL) for a single drone, search and rescue
---Methods to achieve shortest path (RL)
---Mostly tested in simulation, not implemented in real-time
+#State of The Art
 
-We have to incorporate both Deep Learning and Reinforcement Learning
-
---Delay between action and rewards
---Deep Learning (DL) assumes independent actions, while in RL states are highly correlated
---Effectivenss is dependent on the exploration strategy used
---Frontier exploration
---How well does it resemble the real-world scenario
-
-To do
---Learn collision avoidance
---exploration
---victim discovery and identification
-
-Papers
---Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search
---Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs
-
-
+	The existing work in navigation of a fleet of Unmanned Aerial Vechicles(UAVs) using Reinforecement learning is mostly focused on identifying the shortest path and different exploration strategies. Search and rescue operations have been simulated using a single drone in several other research papers. Our objective is to combine these approaches and integrate a swarm of drones using Reinforcement Learning.
+	
+	The major areas of focus in the literature is to overcome the following 
+		1. The considerable delay between action and rewards in a system
+		2. Deep learning works on the assumption that the input variables are independent, while the states in reinforcement        learning are highly correlated
+		3. The effectiveness of the algorithm is dependent on the exploration strategy used
+	
+	Frontier exploration is considered a better method, but was not implemented in the papers reviewed due to software constraints, in addition to the existing simulation we would like to analyze frontier exploration and also keep a close check on how well does this resemble the real-world scenario. The project aims to synchronize a fleet of drones to learn collision avoidance, find better exploration techniques along with victim discovery and targeted exploration.
+	
+	
+	Reference Papers:
+	  1. Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search
+    2. Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs
+    3. Aydin (2017) A Reinforcement Learning Algorithm for Building Collaboration in Multi-Agent 
+    
+    
 #Data Foundation
-Our ultimate aim is to use a team of autonomous drones for Search and Rescue missions via simulations. Hence the requirement for real time data is not mandatory.
+  Our ultimate aim is to use a team of autonomous drones for Search and Rescue missions via simulations. Hence the requirement for real time data is not mandatory.
 The simulator uses plugin that can you can drop into any existing, or new, unreal environment. It can generate training data through images for each frame.
 A more complex way to generate training data is through Application programming interfaces (API). These APIs collect sensor and ground truth data from the drones, as well as various images. With their help, the code used to test drones in the simulator can be transferred to an offboard computer and used on real drones
 The following are simulation platforms which will be evaluated in due course for its complexity, performance, financial cost and hardware requirements:
@@ -64,7 +58,7 @@ The following are simulation platforms which will be evaluated in due course for
 •	AirSim :platform for artificial intelligence (AI) research to experiment with deep learning, computer vision and reinforcement learning algorithms for autonomous vehicles.
 
 #Research Idea
-The experiment will focus on developing a novel reward function. Using a combination or subset of the following parameters will be tested to evaluate performance and provide an optimal solution. 
+  The experiment will focus on developing a novel reward function. Using a combination or subset of the following parameters will be tested to evaluate performance and provide an optimal solution. 
 distance to other drones - sufficiently far such that coverage is not doubled but to also ensure that coverage is not missed.  It will be weighted to be more lenient on allowing double coverage.
 exploration feedback - maximize coverage as quickly as possible
 hard or soft coverage techniques - drones coverage is gradient - more confident nearby and less confident far away
@@ -73,25 +67,28 @@ different tiers of drones with different reward functions - one tier focuses on 
 This will be compared to current State of Art techniques.
 
 # Tangible outcomes
-We will be making use of the open source software for our project and provide results via software documentation (story about requirements, design, implementation). In addition to this, we will also be including a demo or a tutorial in the form a video representation. The video will depict the simulation of the drone navigating through a known/unknown path in search of a particular object/person, while avoiding obstacles on the way. The data regarding the location and optimal path will be transmitted to the central hub after which the rescue mission can take place.
+  We will be making use of the open source software for our project and provide results via software documentation (story about requirements, design, implementation). In addition to this, we will also be including a demo or a tutorial in the form a video representation. The video will depict the simulation of the drone navigating through a known/unknown path in search of a particular object/person, while avoiding obstacles on the way. The data regarding the location and optimal path will be transmitted to the central hub after which the rescue mission can take place.
+
+#Resources
+ Since working of the drone is simulated, there is no requirement for real time data. Though there are many open source softwares available, we might need computational units for efficient implementation of the same
 
 #Work Plan
-Preparation: [April - May] Evaluate and analyze simluator systems and perform background research
-Implementation: [April - June] Implement experiment design and State of Art to current baseline
-Testing: [May-Oct] Evaluate experiments, adjust algorithms, re-evaluate experiment
-Finalization: [Presentation 1: May-June, Presentation 2: Sep-Oct, Final Presentation and Documentation: Oct-Dec] Prepare presentations, report, and software documentation
+  Preparation: [April - May] Evaluate and analyze simluator systems and perform background research
+  Implementation: [April - June] Implement experiment design and State of Art to current baseline
+  Testing: [May-Oct] Evaluate experiments, adjust algorithms, re-evaluate experiment
+  Finalization: [Presentation 1: May-June, Presentation 2: Sep-Oct, Final Presentation and Documentation: Oct-Dec] Prepare    presentations, report, and software documentation
 
 
 # Team
-Our team consists of
-- Benjamin Hogstad (277456) - Received a Bachelors of Science in Mathematics with a Chemistry minor from the University of Oregon.  Prior experience in a regulated chemical laboratory as quality assurance and project manager. United States of America
+  Our team consists of
+  - Benjamin Hogstad (277456) - Received a Bachelors of Science in Mathematics with a Chemistry minor from the University of  Oregon.  Prior experience in a regulated chemical laboratory as quality assurance and project manager. United States of America
 
 
-- Ramya Raghuraman(277488) Received a bachelor degree in Electronics and Communication. Experience in Accenture as an associate software developer
+  - Ramya Raghuraman(277488) Received a bachelor degree in Electronics and Communication. Experience in Accenture as an associate software developer
 
-- Krithika Murugesan(277537) Prior experience in Web and Click Stream Analytics for Search Engine Ad monetization and Optimization
+  - Krithika Murugesan(277537) Prior experience in Web and Click Stream Analytics
 
-- Mohana Nyamanahalli Venkatesha
+  - Mohana Nyamanahalli Venkatesha
 
-- Michael Ruchte
+  - Michael Ruchte
 Experience in Computer Vision, working experience in software development
