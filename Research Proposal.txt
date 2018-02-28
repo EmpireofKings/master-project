@@ -51,3 +51,17 @@ To do
 Papers
 --Border et al (2015) Learning to Save Lives - Using Reinforcement Learning with Environment Features for Efficient Robot Search a.pdf
 --Challita et al (2018) Deep Reinforcement Learning for Interference-Aware Path Planning of Cellular-Connected UAVs.pdf
+
+
+#Data Foundation
+Our ultimate aim is to use a team of autonomous drones for Search and Rescue missions via simulations. Hence the requirement for real time data is not mandatory.
+The simulator uses plugin that can you can drop into any existing, or new, unreal environment. It can generate training data through images for each frame.
+A more complex way to generate training data is through Application programming interfaces (API). These APIs collect sensor and ground truth data from the drones, as well as various images. With their help, the code used to test drones in the simulator can be transferred to an offboard computer and used on real drones
+The following are a couple of simulation platforms which will be evaluated in due course for its complexity, performance, financial cost and hardware requirements:
+•	SITL (Software In The Loop) most commonly used by developers. 
+•	Gazebo is the official DARPA virtual robotics simulator
+•	XPlane-10 a commercial flight simulator with a rich 3D interface
+•	RealFlight a commercial flight simulator with a rich 3D interface and ability to design custom vehicles
+•	AirSim :platform for artificial intelligence (AI) research to experiment with deep learning, computer vision and reinforcement learning algorithms for autonomous vehicles.
+ Tangible outcomes
+We will be making use of the open source software for our project and provide results via software documentation (story about requirements, design, implementation). In addition to this, we will also be including a demo or a tutorial in the form a video representation. The video will depict the simulation of the drone navigating through a known/unknown path in search of a particular object/person, while avoiding obstacles on the way. The data regarding the location and optimal path will be transmitted to the central hub after which the rescue mission can take place.
