@@ -63,5 +63,19 @@ The following are a couple of simulation platforms which will be evaluated in du
 •	XPlane-10 a commercial flight simulator with a rich 3D interface
 •	RealFlight a commercial flight simulator with a rich 3D interface and ability to design custom vehicles
 •	AirSim :platform for artificial intelligence (AI) research to experiment with deep learning, computer vision and reinforcement learning algorithms for autonomous vehicles.
- Tangible outcomes
+
+# Tangible outcomes
 We will be making use of the open source software for our project and provide results via software documentation (story about requirements, design, implementation). In addition to this, we will also be including a demo or a tutorial in the form a video representation. The video will depict the simulation of the drone navigating through a known/unknown path in search of a particular object/person, while avoiding obstacles on the way. The data regarding the location and optimal path will be transmitted to the central hub after which the rescue mission can take place.
+
+# Team
+Our team consists of
+- Benjamin Hogstad
+
+- Ramya Raghuraman
+
+- Krithika Murugesan 
+
+- Mohana Nyamanahalli Venkatesha
+
+- Michael Ruchte
+Experience in Computer Vision, working experience in software development
