@@ -28,14 +28,29 @@ class DroneTestCase(unittest.TestCase):
         init_pos = Point(0,0)
         id = 1
         d1 = Drone(g1, init_pos, id)
-        
+        # Actions
         g1.position_drone(d1)
-        
         d1.move(Direction.DOWN)
-        
+        # Assertions
         self.assertEqual(g1._grid[1,0], id)
         self.assertEqual((g1._grid == None).sum(), 10*5-10 - 1,
             "Expecting all entries but the drone and 10 obsticles to be None")
+        self.assertEqual(d1.get_trace()[0], Point(0, 0), "Expecting point in trace")
+        self.assertEqual(len(d1.get_trace()), 1, "Expecting just one entry in trace")
+        
+    def test_move_drone_to_obsticle(self):
+        #  Grid
+        g1 = Grid(10, 5)
+        g1.set_obsticles(1, 10)
+        # Drone
+        init_pos = Point(0,0)
+        id = 1
+        d1 = Drone(g1, init_pos, id)
+        # Actions
+        g1.position_drone(d1)
+        # Assertions
+        with self.assertRaises(PositioningError) as context:
+            d1.move(Direction.RIGHT)
         
 
 class GridTestCase(unittest.TestCase):

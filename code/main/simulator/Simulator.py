@@ -19,6 +19,12 @@ class Point(object):
         
     def __str__(self):
         return "[X=%s, Y=%s]"%(self.X, self.Y)
+        
+    def __eq__(self, other):
+        if isinstance(other, Point):
+            return self.X == other.X and self.Y == other.Y
+        else:
+            return NotImplemented
     
     def __add__(self, other):
         '''overload + operator'''
