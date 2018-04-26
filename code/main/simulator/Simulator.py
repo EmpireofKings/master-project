@@ -31,7 +31,9 @@ class Point(object):
     
     def __add__(self, other):
         '''overload + operator'''
-        if isinstance(other, Direction):
+        if other == None:
+            return self
+        elif isinstance(other, Direction):
             if other == Direction.UP:
                 return Point(self.X, self.Y - 1)
             elif other == Direction.RIGHT:
@@ -77,7 +79,7 @@ class Drone(object):
         surrounding = []
         for d in Direction:
             p = self.position + d
-            surrounding.append((p, self.grid.get_value(p)))
+            surrounding.append(self.grid.get_value(p))
         return surrounding
     
     def get_position(self):
@@ -104,6 +106,9 @@ class Grid(object):
         self.rs = np.random.RandomState(seed)
         self.are_drones_set = False
         self.are_obsticles_set = False
+        
+    def __str__(self):
+        return "Simulator grid with size %s:\n%s" % (self.size, self._grid)
         
     def set_obsticles(self, num_obsticles):
         '''Obstacles appear in grid as "O".'''
@@ -186,7 +191,9 @@ class Grid(object):
     def set_value(self, point, value):
         x = point.getX()
         y = point.getY()
-        if self._grid[y, x] == None:
+        if x < 0 or y < 0 or x >= self.size[1] or y >= self.size[0]:
+            raise IndexError("Index out of bound. [x=%s, y=%s" % (x, y))
+        elif self._grid[y, x] == None:
             self._grid[y, x] = value
         else:
             raise PositioningError("Location %s is already used! Content: %s" % (point, self.get_value(point)))
