@@ -11,6 +11,9 @@ class Direction(Enum):
 class PositioningError(Exception):
     pass
 
+class TargetUnreachableError(Exception):
+    pass
+
 class Point(object):
     '''2D Point'''
     def __init__(self, x, y):
@@ -57,6 +60,7 @@ class Drone(object):
         self.grid = grid
         self.id = id
         self.trace = []
+        self.grid.position_drone(self)
         
     
     def __str__(self):
@@ -68,6 +72,13 @@ class Drone(object):
         self.trace.append(self.position)
         self.position = self.position + direction
             
+    def observe_surrounding(self):
+        # Order: Top, right, down, left
+        surrounding = []
+        for d in Direction:
+            p = self.position + d
+            surrounding.append((p, self.grid.get_value(p)))
+        return surrounding
     
     def get_position(self):
         return self.position
@@ -87,27 +98,77 @@ class Drone(object):
         
 class Grid(object):
 
-    def __init__(self, size_y, size_x):
+    def __init__(self, size_y, size_x, seed):
         self._grid = np.full([size_y, size_x], None)
         self.size = (size_y, size_x)
+        self.rs = np.random.RandomState(seed)
+        self.are_drones_set = False
+        self.are_obsticles_set = False
         
-    def set_obsticles(self, seed, num_obsticles):
+    def set_obsticles(self, num_obsticles):
         '''Obstacles appear in grid as "O".'''
-        rs = np.random.RandomState(seed)
         i = 0
         while i < num_obsticles:
-            y = rs.randint(low = 0, high = self.size[0])
-            x = rs.randint(low = 0, high = self.size[1])
+            y = self.rs.randint(low = 0, high = self.size[0])
+            x = self.rs.randint(low = 0, high = self.size[1])
             p = Point(x, y)
             try:
                 self.set_value(Point(x, y), "O")
                 i += 1
             except PositioningError:
                 pass  # Try again
+        self.are_obsticles_set = True
+    
+    def set_target(self):
+        assert self.are_drones_set and self.are_obsticles_set, \
+            "Obsticles and drones are needed to check reachability of target."
+        successful = False
+        count_tries = 0
+        while not successful:
+            y = self.rs.randint(low = 0, high = self.size[0])
+            x = self.rs.randint(low = 0, high = self.size[1])
+            p = Point(x, y)
+            if self.get_value(p) == None:
+                # Check if target is reachable
+                if self._target_reachable(p):
+                    self.set_value(Point(x, y), "T")
+                    successful = True
+                else:
+                    count_tries += 1 # Try again
+            else:
+                count_tries += 1 # Try again 
+            
+            if count_tries >= self._grid.size:
+                raise TargetUnreachableError("Too many obsticles to set reachable target")
+        
+    def _target_reachable(self, target):
+        filled_grid = np.zeros(self.size) # Memory for visited cells
+        return self._flood_fill(filled_grid, target)
+        
+        
+    def _flood_fill(self, filled_grid, current_pos):
+        '''Recoursive'''
+        if isinstance(self.get_value(current_pos), int):
+            # Found a drone
+            return True
+        elif self.get_value(current_pos) == "O":
+            # Blocked by obsticle
+            return False
+        elif filled_grid[current_pos.getY(), current_pos.getX()] == 1:
+            # Already visited this cell
+            return False
+        # Mark cell as visited
+        filled_grid[current_pos.getY(), current_pos.getX()] = 1
+        is_path = False
+        for direction in Direction:
+            if not is_path:
+                is_path = self._flood_fill(filled_grid, current_pos + direction)
+        return is_path
         
     def position_drone(self, drone):
         p = drone.get_position()
         self.set_value(p, drone.get_id())
+        self.are_drones_set = True
         
     def move_drone(self, drone, direction):
         p = drone.get_position()
@@ -117,7 +178,10 @@ class Grid(object):
     def get_value(self, point):
         x = point.getX()
         y = point.getY()
-        return self._grid[y, x]
+        if x < 0 or y < 0 or x >= self.size[1] or y >= self.size[0]:
+            return "O"   # Tread cells outsied of grid borders as obsticles
+        else:
+            return self._grid[y, x] 
     
     def set_value(self, point, value):
         x = point.getX()
