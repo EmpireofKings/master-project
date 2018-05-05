@@ -1,5 +1,4 @@
-import numpy as np
-
+# Simulator module
 
 from enum import Enum
 class Direction(Enum):
@@ -47,14 +46,16 @@ class Point(object):
         else:
             raise TypeError("Expecting Direction, got %s" % type(other))
     
+    def __hash__(self):
+        base = 42
+        return base + 100000*self.X + self.Y
+    
     def getX(self):
         return self.X
     
     def getY(self):
         return self.Y
     
-
-        
 class Drone(object):
     
     def __init__(self, grid, position, id):
@@ -96,8 +97,8 @@ class Drone(object):
             raise PositioningError("%s hit an obsticle when moving %s" % (self, direction))
         # TODO: Other drones?
 
-
-        
+import numpy as np
+import random       
 class Grid(object):
 
     def __init__(self, size_y, size_x, seed):
@@ -128,24 +129,32 @@ class Grid(object):
         assert self.are_drones_set and self.are_obsticles_set, \
             "Obsticles and drones are needed to check reachability of target."
         successful = False
-        count_tries = 0
+        cells = self.asdict()
         while not successful:
-            y = self.rs.randint(low = 0, high = self.size[0])
-            x = self.rs.randint(low = 0, high = self.size[1])
-            p = Point(x, y)
-            if self.get_value(p) == None:
-                # Check if target is reachable
-                if self._target_reachable(p):
-                    self.set_value(Point(x, y), "T")
+            
+            #y = self.rs.randint(low = 0, high = self.size[0])
+            #x = self.rs.randint(low = 0, high = self.size[1])
+            p = self.rs.choice(list(cells))
+            if p in cells:
+                if cells[p] == None and self._target_reachable(p):
+                    # Check if target is reachable
+                    self.set_value(p, "T")
                     successful = True
                 else:
-                    count_tries += 1 # Try again
-            else:
-                count_tries += 1 # Try again 
+                    del cells[p] 
             
-            if count_tries >= self._grid.size:
+            if len(cells) == 0:
                 raise TargetUnreachableError("Too many obsticles to set reachable target")
-        
+    
+    def asdict(self):
+        """Returns a dict with cells as keys and content as value"""
+        result = {}
+        for y in range(self.size[0]):
+            for x in range(self.size[1]):
+                p = Point(x, y)
+                result[p] = self.get_value(p)
+        return result
+    
     def _target_reachable(self, target):
         filled_grid = np.zeros(self.size) # Memory for visited cells
         return self._flood_fill(filled_grid, target)
