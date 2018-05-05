@@ -123,9 +123,9 @@ class GridTestCase(unittest.TestCase):
         id = 99
         d1 = Drone(g1, init_pos, id)
         # Target
-        g1.set_target() # Target will be in (2, 1) because of seed
+        g1.set_target() # Target will be in (3, 0) because of seed
         # Assertions
-        self.assertEqual(g1.get_value(Point(2, 1)), "T", "Tested point is expected to be an target")
+        self.assertEqual(g1.get_value(Point(3, 0)), "T", "Tested point is expected to be an target")
         self.assertEqual((g1._grid == "T").sum(), 1, "Expecting one entrie to be marked as target")
         self.assertEqual((g1._grid == None).sum(), 10*5-10-1-1, "Expecting all other entries to be None")
         
@@ -141,7 +141,7 @@ class GridTestCase(unittest.TestCase):
         with self.assertRaises(TargetUnreachableError) as context:
             g1.set_target()
         
-    def test_set_reachable_target_many_obsticles(self):
+    def test_set_reachable_target_many_obstacles(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
         g1.set_obsticles(10*5 - 20)
@@ -152,7 +152,7 @@ class GridTestCase(unittest.TestCase):
         # Actions
         g1.set_target()
         # Assertions
-        self.assertEqual(g1.get_value(Point(0, 0)), "T", "Tested point is expected to be an target")
+        self.assertEqual(g1.get_value(Point(1, 1)), "T", "Tested point is expected to be an target")
 
         
 class SimulatorTestCase(unittest.TestCase):
@@ -166,21 +166,22 @@ class SimulatorTestCase(unittest.TestCase):
         id = 99
         d1 = Drone(g1, init_pos, id)
         # Target
-        g1.set_target() # Target will be in (2, 1) because of seed
+        g1.set_target() # Target will be in (3, 0) because of seed
         # Actions
         random.seed(6)
+        move_count = 0
         while not "T" in d1.observe_surrounding():
             rand_direction = random.choice(list(Direction))
             try:
                 d1.move(rand_direction)
+                move_count += 1
                 #print("\n", g1)
             except (PositioningError, IndexError):
                 pass    # Try again
-            
-            
+        
         # Assertions
         self.assertEqual(d1.get_trace()[0], Point(0, 0), "Expecting initial point in trace")
-        self.assertEqual(len(d1.get_trace()), 12, "Expecting 12 entries in trace with seed=6")
+        self.assertEqual(len(d1.get_trace()), move_count, "Expecting 12 entries in trace with seed=6")
     
     
     def test_three_drones_random_walk(self):
@@ -188,9 +189,9 @@ class SimulatorTestCase(unittest.TestCase):
         g1 = Grid(10, 5, seed=2)
         g1.set_obsticles(10)
         # Drones
-        d1 = Drone(g1, Point(0,0), 0)
-        d2 = Drone(g1, Point(0,1), 1)
-        d3 = Drone(g1, Point(0,2), 2)
+        d1 = Drone(g1, Point(0,0), 1)
+        d2 = Drone(g1, Point(0,1), 2)
+        d3 = Drone(g1, Point(0,2), 3)
         # Target
         g1.set_target() # Target will be in (2, 1) because of seed
         # Actions
