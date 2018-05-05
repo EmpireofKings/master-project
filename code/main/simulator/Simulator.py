@@ -47,8 +47,7 @@ class Point(object):
             raise TypeError("Expecting Direction, got %s" % type(other))
     
     def __hash__(self):
-        base = 42
-        return base + 100000*self.X + self.Y
+        return hash((self.X, self.Y))
     
     def getX(self):
         return self.X
