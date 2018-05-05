@@ -70,8 +70,7 @@ class Drone(object):
         return "Drone %s at position %s" % (self.id, self.position)
     
     def move(self, direction):
-        #self._check_movability(direction)
-        self.grid.move_drone(self, direction)
+        self.grid.move_drone(self, direction)   # possibly throws exception
         self.trace.append(self.position)
         self.position = self.position + direction
             
@@ -91,11 +90,7 @@ class Drone(object):
         
     def get_trace(self):
         return self.trace
-    
-    def _check_movability(self, direction):
-        if not self.grid.is_accessible(self.position + direction):
-            raise PositioningError("%s hit an obsticle when moving %s" % (self, direction))
-        # TODO: Other drones?
+
 
 import numpy as np
 import random       
@@ -131,9 +126,6 @@ class Grid(object):
         successful = False
         cells = self.asdict()
         while not successful:
-            
-            #y = self.rs.randint(low = 0, high = self.size[0])
-            #x = self.rs.randint(low = 0, high = self.size[1])
             p = self.rs.choice(list(cells))
             if p in cells:
                 if cells[p] == None and self._target_reachable(p):
@@ -141,10 +133,9 @@ class Grid(object):
                     self.set_value(p, "T")
                     successful = True
                 else:
-                    del cells[p] 
-            
-            if len(cells) == 0:
-                raise TargetUnreachableError("Too many obsticles to set reachable target")
+                    del cells[p]
+                    if len(cells) == 0:
+                        raise TargetUnreachableError("Too many obsticles to set reachable target")
     
     def asdict(self):
         """Returns a dict with cells as keys and content as value"""
@@ -186,7 +177,7 @@ class Grid(object):
         
     def move_drone(self, drone, direction):
         p = drone.get_position()
-        self.set_value(p + direction, drone.get_id())
+        self.set_value(p + direction, drone.get_id())   # possibly throws exception
         self.reset_value(p)
         
     def get_value(self, point):
