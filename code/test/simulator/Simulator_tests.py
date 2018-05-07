@@ -42,15 +42,18 @@ class DroneTestCase(unittest.TestCase):
             "Expecting all entries but the drone and 10 obsticles to be None")
         self.assertEqual(len(d1.get_trace()), 0, "Expecting trace to be empty")
     
-    def test_init_drone_fails_string_id(self):
+    def test_init_drone_fails_when_no_int_id(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
         g1.set_obsticles(10)
         # Drone
         init_pos = Point(0,0)
-        id = "Hello"
         with self.assertRaises(AssertionError) as context:
-            d1 = Drone(g1, init_pos, id)
+            d1 = Drone(g1, init_pos, "Hello")
+        with self.assertRaises(AssertionError) as context:
+            d1 = Drone(g1, init_pos, 1.0)
+        with self.assertRaises(AssertionError) as context:
+            d1 = Drone(g1, init_pos, [1, 2])
         
     def test_init_drone_on_obsticle(self):
         g1 = Grid(10, 5, SEED)
