@@ -41,6 +41,16 @@ class DroneTestCase(unittest.TestCase):
         self.assertEqual((g1._grid == None).sum(), 10*5-10 - 1,
             "Expecting all entries but the drone and 10 obsticles to be None")
         self.assertEqual(len(d1.get_trace()), 0, "Expecting trace to be empty")
+    
+    def test_init_drone_fails_string_id(self):
+        #  Grid
+        g1 = Grid(10, 5, SEED)
+        g1.set_obsticles(10)
+        # Drone
+        init_pos = Point(0,0)
+        id = "Hello"
+        with self.assertRaises(AssertionError) as context:
+            d1 = Drone(g1, init_pos, id)
         
     def test_init_drone_on_obsticle(self):
         g1 = Grid(10, 5, SEED)

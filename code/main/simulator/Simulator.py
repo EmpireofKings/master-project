@@ -58,6 +58,7 @@ class Point(object):
 class Drone(object):
     
     def __init__(self, grid, position, id):
+        assert isinstance(id, int), "Expecting int value as ID"
         self.position = position
         self.grid = grid
         self.id = id
@@ -90,9 +91,7 @@ class Drone(object):
     def get_trace(self):
         return self.trace
 
-
-import numpy as np
-import random       
+import numpy as np     
 class Grid(object):
 
     def __init__(self, size_y, size_x, seed):
@@ -126,15 +125,13 @@ class Grid(object):
         cells = self.asdict()
         while not successful:
             p = self.rs.choice(list(cells))
-            if p in cells:
-                if cells[p] == None and self._target_reachable(p):
-                    # Check if target is reachable
-                    self.set_value(p, "T")
-                    successful = True
-                else:
-                    del cells[p]
-                    if len(cells) == 0:
-                        raise TargetUnreachableError("Too many obsticles to set reachable target")
+            if cells[p] == None and self._target_reachable(p):
+                self.set_value(p, "T")
+                successful = True
+            else:
+                del cells[p]
+                if len(cells) == 0:
+                    raise TargetUnreachableError("Too many obsticles to set reachable target")
     
     def asdict(self):
         """Returns a dict with cells as keys and content as value"""
