@@ -2,10 +2,11 @@
 
 from enum import Enum
 class Direction(Enum):
-    UP = 1
-    RIGHT = 2
-    DOWN = 3
-    LEFT = 4
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
+
     
 class PositioningError(Exception):
     pass
@@ -21,7 +22,10 @@ class Point(object):
         
     def __str__(self):
         return "[X=%s, Y=%s]"%(self.X, self.Y)
-        
+    
+    def __repr__(self):
+        return "<X=%s, Y=%s>"%(self.X, self.Y)
+    
     def __eq__(self, other):
         if isinstance(other, Point):
             return self.X == other.X and self.Y == other.Y
