@@ -17,8 +17,8 @@ class PointTestCase(unittest.TestCase):
     def test_operator_overloading(self):
         p1 = Point(1,1)
         p2 = p1 + Direction.UP
-        self.assertEqual(p2.getX(), 1)
-        self.assertEqual(p2.getY(), 0)
+        self.assertEqual(p2.get_x(), 1)
+        self.assertEqual(p2.get_y(), 0)
         
     def test_operator_overloading_none(self):
         p1 = Point(1,1)
@@ -31,7 +31,7 @@ class DroneTestCase(unittest.TestCase):
     def test_init_drone(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 1
@@ -45,7 +45,7 @@ class DroneTestCase(unittest.TestCase):
     def test_init_drone_fails_when_no_int_id(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         with self.assertRaises(AssertionError) as context:
@@ -57,7 +57,7 @@ class DroneTestCase(unittest.TestCase):
         
     def test_init_drone_on_obsticle(self):
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         
         init_pos = Point(1,0) # Occupied by an obsticle
         id = 1
@@ -70,7 +70,7 @@ class DroneTestCase(unittest.TestCase):
     def test_move_drone(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 1
@@ -87,7 +87,7 @@ class DroneTestCase(unittest.TestCase):
     def test_move_drone_to_obsticle(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 1
@@ -99,7 +99,7 @@ class DroneTestCase(unittest.TestCase):
     def test_observe_surrounding(self):
         #  Grid
         g1 = Grid(10, 5, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 1
@@ -123,14 +123,14 @@ class GridTestCase(unittest.TestCase):
         
     def test_set_obsticles(self):
         g1 = Grid(30, 15, SEED)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         self.assertEqual((g1._grid == "O").sum(), 10, "Expecting 10 entries to be marked as obsticles")
         self.assertEqual((g1._grid == None).sum(), 30*15-10, "Expecting all entries but one to be None")
            
     def test_set_reachable_target(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 99
@@ -145,7 +145,7 @@ class GridTestCase(unittest.TestCase):
     def test_set_reachable_target_too_many_obsticles(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
-        g1.set_obsticles(10*5 - 5)
+        g1.set_obstacles(10*5 - 5)
         # Drone
         init_pos = Point(3,0)
         id = 99
@@ -157,7 +157,7 @@ class GridTestCase(unittest.TestCase):
     def test_set_reachable_target_many_obstacles(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
-        g1.set_obsticles(10*5 - 20)
+        g1.set_obstacles(10*5 - 20)
         # Drone
         init_pos = Point(1,0)
         id = 99
@@ -173,7 +173,7 @@ class SimulatorTestCase(unittest.TestCase):
     def test_one_drone_random_walk(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 99
@@ -200,7 +200,7 @@ class SimulatorTestCase(unittest.TestCase):
     def test_three_drones_random_walk(self):
         # Grid
         g1 = Grid(10, 5, seed=2)
-        g1.set_obsticles(10)
+        g1.set_obstacles(10)
         # Drones
         d1 = Drone(g1, Point(0,0), 1)
         d2 = Drone(g1, Point(0,1), 2)

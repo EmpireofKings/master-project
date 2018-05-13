@@ -15,7 +15,7 @@ class TargetUnreachableError(Exception):
     pass
 
 class Point(object):
-    '''2D Point'''
+    """2D Point"""
     def __init__(self, x, y):
         self.X = x
         self.Y = y
@@ -33,8 +33,8 @@ class Point(object):
             return NotImplemented
     
     def __add__(self, other):
-        '''overload + operator'''
-        if other == None:
+        """overload + operator"""
+        if other is None:
             return self
         elif isinstance(other, Direction):
             if other == Direction.UP:
@@ -53,10 +53,10 @@ class Point(object):
     def __hash__(self):
         return hash((self.X, self.Y))
     
-    def getX(self):
+    def get_x(self):
         return self.X
     
-    def getY(self):
+    def get_y(self):
         return self.Y
     
 class Drone(object):
@@ -103,33 +103,32 @@ class Grid(object):
         self.size = (size_y, size_x)
         self.rs = np.random.RandomState(seed)
         self.are_drones_set = False
-        self.are_obsticles_set = False
+        self.are_obstacles_set = False
         
     def __str__(self):
         return "Simulator grid with size %s:\n%s" % (self.size, self._grid)
         
-    def set_obsticles(self, num_obsticles):
-        '''Obstacles appear in grid as "O".'''
+    def set_obstacles(self, num_obstacles):
+        """Obstacles appear in grid as "O"."""
         i = 0
-        while i < num_obsticles:
-            y = self.rs.randint(low = 0, high = self.size[0])
-            x = self.rs.randint(low = 0, high = self.size[1])
-            p = Point(x, y)
+        while i < num_obstacles:
+            y = self.rs.randint(low=0, high=self.size[0])
+            x = self.rs.randint(low=0, high=self.size[1])
             try:
                 self.set_value(Point(x, y), "O")
                 i += 1
             except PositioningError:
                 pass  # Try again
-        self.are_obsticles_set = True
+        self.are_obstacles_set = True
     
     def set_target(self):
-        assert self.are_drones_set and self.are_obsticles_set, \
-            "Obsticles and drones are needed to check reachability of target."
+        assert self.are_drones_set and self.are_obstacles_set, \
+            "Obstacles and drones are needed to check if target is reachable."
         successful = False
         cells = self.asdict()
         while not successful:
             p = self.rs.choice(list(cells))
-            if cells[p] == None and self._target_reachable(p):
+            if cells[p] is None and self._target_reachable(p):
                 self.set_value(p, "T")
                 successful = True
             else:
@@ -152,18 +151,18 @@ class Grid(object):
         
         
     def _flood_fill(self, filled_grid, current_pos):
-        '''Recoursive'''
+        """This is called recursive"""
         if isinstance(self.get_value(current_pos), int):
             # Found a drone
             return True
         elif self.get_value(current_pos) == "O":
-            # Blocked by obsticle
+            # Blocked by obstacle
             return False
-        elif filled_grid[current_pos.getY(), current_pos.getX()] == 1:
+        elif filled_grid[current_pos.get_y(), current_pos.get_x()] == 1:
             # Already visited this cell
             return False
         # Mark cell as visited
-        filled_grid[current_pos.getY(), current_pos.getX()] = 1
+        filled_grid[current_pos.get_y(), current_pos.get_x()] = 1
         is_path = False
         for direction in Direction:
             if not is_path:
@@ -181,32 +180,32 @@ class Grid(object):
         self.reset_value(p)
         
     def get_value(self, point):
-        x = point.getX()
-        y = point.getY()
+        x = point.get_x()
+        y = point.get_y()
         if x < 0 or y < 0 or x >= self.size[1] or y >= self.size[0]:
             return "O"   # Tread cells outsied of grid borders as obsticles
         else:
             return self._grid[y, x] 
     
     def set_value(self, point, value):
-        x = point.getX()
-        y = point.getY()
+        x = point.get_x()
+        y = point.get_y()
         if x < 0 or y < 0 or x >= self.size[1] or y >= self.size[0]:
             raise IndexError("Index out of bound. [x=%s, y=%s" % (x, y))
-        elif self._grid[y, x] == None:
+        elif self._grid[y, x] is None:
             self._grid[y, x] = value
         else:
             raise PositioningError("Location %s is already used! Content: %s" % (point, self.get_value(point)))
         
     def reset_value(self, point):
-        self._grid[point.getY(), point.getX()] = None
+        self._grid[point.get_y(), point.get_x()] = None
     
     def is_accessible(self, point):
         # Check for outside grid
-        if point.getX() < 0 or \
-           point.getY() < 0 or \
-           point.getY() > self.size[0] or \
-           point.getX() > self.size[1]:
+        if point.get_x() < 0 or \
+           point.get_y() < 0 or \
+           point.get_y() > self.size[0] or \
+           point.get_x() > self.size[1]:
             return False
         # Check for obstacles
         elif self.get_value(point) == "O":
