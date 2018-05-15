@@ -16,7 +16,7 @@ np.random.seed(1)
 
 ######          REINFORCE: MONTE CARLO POLICY GRADIENT                ######
 
-
+num_features = 3
 def x(s, a):
     """vector of features visible when in state s taking action a"""
     next_s = s + a
@@ -31,7 +31,7 @@ def h(s, a, theta):
     
 def pi(s, a, theta):
     """policy parametrisation. Exponential soft-max over h(s, a, theta)"""
-    return h(s, a, theta) / np.sum([h(s, a_i, theta) for a_i in Direction])
+    return np.exp(h(s, a, theta)) / np.sum([np.exp(h(s, a_i, theta)) for a_i in Direction])
 
 def pi_gradient(s, a, theta):
     """Gradient of policy parametrisation, equation 13.7"""
@@ -57,16 +57,16 @@ def return_fkt(data, t):
 ## HYPERPARAMETERS
 steplenght = 1e-6
 epochs = 200
-train_steps = 100   # How many moves the drone does before updating weights
+train_steps = 100    # How many moves the drone does before updating weights
 e_greedy = 0.2      # e_greedy percent of the times drone makes random move
     
 # Initialize weights
-theta = np.random.random_sample((3,))
+theta = np.random.random_sample((num_features,))
 
 # Example seeds:
 #   Not converging: 1, 4, 7, 8, 10
 #   Converging: 2, 3, 6
-grid_seed = 2
+grid_seed = 3
 
 theta_0 = theta.copy()
 returns = []
