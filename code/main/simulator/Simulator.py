@@ -102,6 +102,7 @@ class Grid(object):
         self._grid = np.full([size_y, size_x], None)
         self.size = (size_y, size_x)
         self.rs = np.random.RandomState(seed)
+        self.drone = None
         self.are_drones_set = False
         self.are_obstacles_set = False
         
@@ -170,6 +171,7 @@ class Grid(object):
         return is_path
         
     def position_drone(self, drone):
+        self.drone = drone
         p = drone.get_position()
         self.set_value(p, drone.get_id())
         self.are_drones_set = True
@@ -199,6 +201,12 @@ class Grid(object):
         
     def reset_value(self, point):
         self._grid[point.get_y(), point.get_x()] = None
+    
+    def get_drones_vector(self):
+        return (self._grid == self.drone.get_id()).astype(bool).astype(int).ravel()
+        
+    def get_obsticles_vector(self):
+        return (self._grid == "O").astype(int).ravel()
     
     def is_accessible(self, point):
         # Check for outside grid
