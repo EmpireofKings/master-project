@@ -17,7 +17,7 @@ np.random.seed(1)
 
 gridsize = [10,5]
 grid_flat = gridsize[0]*gridsize[1]
-
+target_found = False
 num_actions = 4
 
 x = tf.placeholder(tf.float32, [None, grid_flat])
@@ -70,12 +70,12 @@ max_iterations = 50
 returns = []
 
 
-observed_v = reward(drone_loc)#will need to be changed to discounted reward later
+obs_reward = reward(drone_loc) #will need to be changed to discounted reward later
 act_reward = policy.get([best_action]) #policy indexed at the best action
-advantage = observed_v - act_reward
+advantage = obs_reward - act_reward
 
 #Loss Functions:
-value_loss = 0.5 * tf.reduce_sum(tf.square(observed_v - tf.reshape(value,[-1])))
+value_loss = 0.5 * tf.reduce_sum(tf.square(obs_reward - tf.reshape(value,[-1])))
 entropy = - tf.reduce_sum(policy * tf.log(policy))
 policy_loss = -tf.reduce_sum(tf.log(act_reward)*advantage)
 loss = 0.5 * value_loss + policy_loss# - entropy * 0.01
@@ -117,5 +117,5 @@ for epoch in range(epochs):
 
 plt.plot(returns)
 plt.xlabel('Epochs')
-plt.ylabel('Return of ')
+plt.ylabel('Return of Overall Reward')
 plt.show()
