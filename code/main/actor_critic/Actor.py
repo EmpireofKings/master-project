@@ -24,7 +24,7 @@ class PolicyGradient:
         self.lr = learning_rate
         self.gamma = reward_decay
 
-        self.episode_observations, self.episode_actions, self.episode_rewards = [], [], []
+        self.episode_states, self.episode_actions, self.episode_rewards = [], [], []
 
         self.build_network()
 
@@ -50,7 +50,7 @@ class PolicyGradient:
                 a: action taken
                 r: reward after action
         """
-        self.episode_observations.append(np.array(s))
+        self.episode_states.append(np.array(s))
         self.episode_rewards.append(r)
 
         # Store actions as list of arrays
@@ -86,24 +86,27 @@ class PolicyGradient:
 
         # Train on episode
         self.sess.run(self.train_op, feed_dict={
-             self.X: self.episode_observations,
+             self.X: self.episode_states,
              self.Y: np.array(self.episode_actions),
              self.discounted_episode_rewards_norm: np.array(discounted_episode_rewards_norm)
         })
-
-        # Reset the episode data
-        self.episode_observations, self.episode_actions, self.episode_rewards  = [], [], []
-
         return discounted_episode_rewards_norm
+
+    def reset(self):
+        # Reset the episode data
+        self.episode_states, self.episode_actions, self.episode_rewards  = [], [], []
+
+        
 
     def discount_and_norm_rewards(self):
         discounted_episode_rewards = []#np.zeros_like(self.episode_rewards)
-        cumulative = 0
+        cumulative = self.episode_rewards[-1]
         for t in reversed(range(len(self.episode_rewards))):
-            discounted_episode_rewards.append(np.float(cumulative * self.gamma + self.episode_rewards[t]))
-
-        discounted_episode_rewards -= np.mean(discounted_episode_rewards)
-        discounted_episode_rewards /= np.std(discounted_episode_rewards)
+            discounted_episode_rewards.append(np.float(cumulative * self.gamma**t + self.episode_rewards[t]))
+#
+#        discounted_episode_rewards -= np.mean(discounted_episode_rewards)
+#        discounted_episode_rewards /= np.std(discounted_episode_rewards)
+        
         return discounted_episode_rewards
 
 
@@ -137,18 +140,17 @@ class PolicyGradient:
             A2 = tf.nn.relu(Z2)
         with tf.name_scope('layer_3'):
             Z3 = tf.add(tf.matmul(A2, W3),b3)
-#            A3 = tf.nn.relu(Z3)
 
         # Softmax outputs, we need to transpose as tensorflow nn functions expects them in this shape
         logits = tf.transpose(Z3)
         labels = tf.transpose(self.Y)
         self.outputs_softmax = tf.nn.softmax(logits, axis=0)
         with tf.name_scope('loss'):
-            neg_log_prob = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+            neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels)
             loss = tf.reduce_mean(neg_log_prob * self.discounted_episode_rewards_norm)  # reward guided loss
-
+            
         with tf.name_scope('train'):
-            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
+            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(-loss)
 
     def plot_cost(self):
         import matplotlib.pyplot as plt
