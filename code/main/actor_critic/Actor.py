@@ -119,27 +119,28 @@ class PolicyGradient:
 
         # Initialize parameters
         units_input_layer = self.n_x
-        units_layer_1 = int(self.n_x/2)
+        units_layer_1 = int(self.n_x*2)
         units_layer_2 = int(self.n_x/4)
         units_output_layer = self.n_y
         
         with tf.name_scope('parameters'):
             W1 = tf.Variable(tf.random_normal([units_input_layer, units_layer_1], stddev=1/units_input_layer**0.5), name="W1")
             b1 = tf.Variable(tf.random_normal([units_layer_1], stddev=1/units_layer_1**0.5), name="b1")
-            W2 = tf.Variable(tf.random_normal([units_layer_1, units_layer_2], stddev=1/units_layer_1**0.5), name="W2")
-            b2 = tf.Variable(tf.random_normal([units_layer_2], stddev=1/units_layer_2**0.5), name="b2")
-            W3 = tf.Variable(tf.random_normal([units_layer_2, units_output_layer], stddev=1/units_layer_2**0.5), name="W3")
+#            W2 = tf.Variable(tf.random_normal([units_layer_1, units_layer_2], stddev=1/units_layer_1**0.5), name="W2")
+#            b2 = tf.Variable(tf.random_normal([units_layer_2], stddev=1/units_layer_2**0.5), name="b2")
+            W3 = tf.Variable(tf.random_normal([units_layer_1, units_output_layer], stddev=1/units_layer_2**0.5), name="W3")
             b3 = tf.Variable(tf.random_normal([units_output_layer], stddev=1/units_output_layer**0.5), name="b3")
 
         # Forward prop
         with tf.name_scope('layer_1'):
             Z1 = tf.add(tf.matmul(tf.cast(self.X, tf.float32), W1),b1)
             A1 = tf.nn.relu(Z1)
-        with tf.name_scope('layer_2'):
-            Z2 = tf.add(tf.matmul(A1, W2),b2)
-            A2 = tf.nn.relu(Z2)
+#        with tf.name_scope('layer_2'):
+#            Z2 = tf.add(tf.matmul(A1, W2),b2)
+#            A2 = tf.nn.relu(Z2)
         with tf.name_scope('layer_3'):
-            Z3 = tf.add(tf.matmul(A2, W3),b3)
+#            Z3 = tf.add(tf.matmul(A2, W3),b3)
+            Z3 = tf.add(tf.matmul(A1, W3),b3)
 
         # Softmax outputs, we need to transpose as tensorflow nn functions expects them in this shape
         logits = tf.transpose(Z3)
@@ -150,8 +151,10 @@ class PolicyGradient:
             loss = tf.reduce_mean(neg_log_prob * self.discounted_episode_rewards_norm)  # reward guided loss
             
         with tf.name_scope('train'):
-            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(-loss)
-
+            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
+    def learning_rate(self,multiplier):
+        self.lr = self.lr*multiplier
+        
     def plot_cost(self):
         import matplotlib.pyplot as plt
         plt.plot(np.arange(len(self.cost_history)), self.cost_history)
