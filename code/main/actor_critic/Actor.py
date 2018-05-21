@@ -74,7 +74,7 @@ class PolicyGradient:
         
         # Run forward propagation to get softmax probabilities
         prob_weights = self.sess.run(self.network, feed_dict={self.X: observation})
-        print("action probs", prob_weights)
+        #print("action probs", prob_weights)
         
         # Select action using a biased sample
         # this will return the index of the action we've sampled
@@ -148,7 +148,7 @@ class PolicyGradient:
                                                      name="discounted_rewards")
             
         # First hidden layer
-        layer_1 = tf.layers.Dense(units=4,  # num output nodes
+        layer_1 = tf.layers.Dense(units=30,  # num output nodes
                                   activation=tf.nn.relu,
                                   name="layer_1")
 
