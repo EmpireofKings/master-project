@@ -2,211 +2,139 @@ from Actor import PolicyGradient
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-import sys
-sys.path.insert(0, r'C:\Users\SuperDuperPig\Documents\GitHub\master-project\code\main\simulator')#Change path to be wherever Simulator.py is stored locally
+import sys, os
+sys.path.append(os.path.abspath("../simulator"))#Change path to be wherever Simulator.py is stored locally
 
 from Simulator import *
 
+np.random.seed(2)
 
-EPISODES = 500
+EPISODES = 100
 rewards = []
 
-gridsize = [5,10]
-grid_flat = gridsize[0]*gridsize[1]
-num_channels = 2 #1 for drone location, 3 more for map of visited locations?  other drone and obstacle locations
-input_size = grid_flat*num_channels
+#gridsize = [5,10]
 
-output_size = 4 #number of actions to choose from
+gridsize = [4, 5]
+grid_flat = gridsize[0] * gridsize[1]
+# 1 for drone location, 3 more for map of visited locations?
+# other drone and obstacle locations
+num_channels = 1
+input_size = grid_flat * num_channels
+
 action_size = 4 #number of actions to choose from
-e_greedy = 0.8
-grid_seed = 1
+e_greedy = 0.4
+grid_seed = 2
 max_iterations = grid_flat #it will take this many actions to go to all cells in the grid
-max_ep_time = 0.1 #number of seconds allowed for each episode
 
-def Try_Move(drone,action):
+
+def move_and_get_reward(drone, action_idx):
+    """Move the drone and get the reward."""
     try:
-        drone.move(Direction(action))
-    except (PositioningError, IndexError):
-        return grid.get_drones_vector()
-    else:
-        return grid.get_drones_vector()
-     
-def Reward(location):
-        if done:
-            return max_iterations*10 #arbitrary reward for finding target
+        drone.move(Direction(action_idx))
+        if "T" in drone.observe_surrounding():
+            # arbitrary reward for finding target
+            return 1
         else:
-            return -disc_map[np.argmax(location)]*2 #if a drone has been to a location multiple times, the penalty will increase linearly with each visit
+            # if a drone has been to a location multiple times,
+            # the penalty will increase linearly with each visit
+            #location_point = drone.get_position()
+            #location = location_point.get_y() * gridsize[1] + location_point.get_x()
+            #return -disc_map[np.argmax(location)]
+            return 0.1
+    except (PositioningError, IndexError):
+        # We hit an obsticle or tried to exit the grid
+        return -1 # arbitrary
+            
 
 
 if __name__ == "__main__":
     reward_list = []
-    reward_list_train = []
-    reward_list_test = []
-    PG = PolicyGradient(
-        n_x = input_size,
-        n_y = output_size,
-        learning_rate=0.01,
-        reward_decay=0.99
-    )
+    
+    PG = PolicyGradient(input_size, action_size,
+                        learning_rate=0.01,
+                        reward_decay=0.99)
+    
     
     for episode in range(EPISODES):
-        done = False
-        
-        episode_reward = 0
-        reward_train = 0
-        target_found = False
-        tic = time.clock()
+        print("Episode", episode, end="\r")
+                
+        # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
         grid.set_obstacles(0) #No obstacles to start
         drone = Drone(grid, position=Point(0,0), id=99)
-        drone_loc = grid.get_drones_vector()
         grid.set_target()
-        disc_map = drone_loc
-        itr = 1
-        state = np.reshape(np.append(drone_loc,disc_map),(-1,input_size)).ravel()
-#        state = drone_loc.ravel()
-        while True:
+
+        # Generate traning data
+        for itr in range(max_iterations):
+            # 1. Get the current state
+            drone_loc = grid.get_drones_vector()
             
-            # 1. Choose an action based on observation
+            # Use smaller state space for the beginning
+            #disc_map = disc_map + drone_loc
+            #state = np.append(drone_loc, disc_map)
+            state = drone_loc.copy()
+            
+            # 2. Choose an action based on observation
             if np.random.randint(1,100)/100 < e_greedy:
-                action = np.random.randint(0,action_size)
+                action_idx = np.random.randint(0, action_size)
+                print("random", action_idx)
             else:
-                action = PG.choose_action(state)
+                action_idx = PG.choose_action(state)
                 
-
-            # 2. Take action in the environment
-            drone_loc = Try_Move(drone,action)
-            disc_map = np.reshape(disc_map,(grid_flat,1))+np.reshape(drone_loc,(grid_flat,1))
-            state_ = np.reshape(np.append(drone_loc,disc_map).ravel(),(input_size,1)).ravel()
-#            state_ = drone_loc.ravel()
-            observed_surrounding = drone.observe_surrounding()
-            
-            
-            # 3. Check to see if target has been found
-            if "T" in observed_surrounding:
-                done = True
-                target_found = True #to be used classifying transitions that have found the target
-                
-            reward = Reward(drone_loc)
-            reward_train+=reward
+            # 3. Take action in the environment
+            reward = move_and_get_reward(drone, action_idx)
             
             # 4. Store transition for training
-            PG.store_transition(state, action, reward)
+            PG.store_transition(state, action_idx, reward)
             
-            toc = time.clock()
-            elapsed_sec = toc - tic
-            itr +=1
+            #print(grid)
             
-            if elapsed_sec > max_ep_time: 
-                done = True
-            
-            if itr > max_iterations:
-                done = True         
-            
-            if done:
-                #learning rate adjustment:
-                if target_found:
-                    PG.learning_rate(0.5)
-                else:
-                    PG.learning_rate(1.1)
-                episode_rewards_sum = sum(PG.episode_rewards)
-                rewards.append(episode_rewards_sum)
-                max_reward_so_far = np.amax(rewards)
-                reward_list_train.append(reward_train)
-#                print("\n ==========================================")
-#                print("Episode: ", episode, 'Reward: ',episode_rewards_sum, 'Max reward: ',max_reward_so_far)
-#                print("Seconds: ", elapsed_sec)
-#                print("Reward: ", episode_rewards_sum)
-#                print("Max reward so far: ", max_reward_so_far)
-#                print('Discovered map: \n', disc_map.reshape(gridsize[0],gridsize[1]))
-
-                # 5. Train neural network
-                discounted_episode_rewards_norm = PG.learn()
-                
-                #Reset the action, state, and reward lists.  Keeping this is like replay memory (full sampling)
-#                PG.reset()
-                
+            # 5. Check to see if target has been found
+            if reward >= 1:
                 break
-
-            # Save new state
-            state = state_
-
-
-        #Test the updated model
-        done = False
         
-        best_error = -500
-        episode_reward = 0
-        reward_train = 0
-#        tic = time.clock()
-        grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
-        grid.set_obstacles(0) #No obstacles to start
-        drone = Drone(grid, position=Point(0,0), id=99)
-        drone_loc = grid.get_drones_vector()
-        grid.set_target()
-        disc_map = drone_loc
-        itr = 1
-        state = np.reshape(np.append(drone_loc,disc_map),(-1,input_size)).ravel()
-#        state = drone_loc.ravel()
+        print("\n-------TRAINING------\n")
         
-        while True:
-            
-            action = PG.choose_action(state)
-                
-
-            # 2. Take action in the environment
-            drone_loc = Try_Move(drone,action)
-            disc_map = np.reshape(disc_map,(grid_flat,1))+np.reshape(drone_loc,(grid_flat,1))
-            state_ = np.reshape(np.append(drone_loc,disc_map).ravel(),(input_size,1)).ravel()
-#            state_ = drone_loc.ravel()
-            observed_surrounding = drone.observe_surrounding()
-            
-            
-            # 3. Check to see if target has been found
-            if "T" in observed_surrounding:
-                done = True
-            reward = Reward(drone_loc)
-            reward_train+=reward
-            # 4. Store transition for training
-            PG.store_transition(state, action, reward)
-            
-#            toc = time.clock()
-#            elapsed_sec = toc - tic
-            itr +=1
-#            
-#            if elapsed_sec > max_ep_time: 
-#                done = True
-            
-            if itr > max_iterations:
-                done = True         
-            
-            if done:
-                episode_rewards_sum = sum(PG.episode_rewards)
-                rewards.append(episode_rewards_sum)
-                max_reward_so_far = np.amax(rewards)
-                
-                reward_list_test.append(reward_train/itr)
-                best_error = np.amax(reward_list_test)
-                print("\n ==========================================")
-#                print("Episode: ", episode, 'Reward: ',episode_rewards_sum, 'Max reward: ',max_reward_so_far)
-#                print("Seconds: ", elapsed_sec)
-#                print("Reward: ", episode_rewards_sum)
-#                print("Max reward so far: ", max_reward_so_far)
-                print('Best Reward: ',best_error,' Current Reward: ', reward_train/itr,' Discovered map: \n', disc_map.reshape(gridsize[0],gridsize[1]))
-
-                # 5. Train neural network
-#                discounted_episode_rewards_norm = PG.learn()
-                
-                #Reset the action, state, and reward lists.  Keeping this is like replay memory (full sampling)
-#                PG.reset()
-                
-                break
-
-            # Save new state
-            state = state_
+        # 5. Train neural network
+        PG.learn()
+        
+        reward_list.append(np.sum(PG.episode_rewards))
+        
+        #Reset the action, state, and reward lists. 
+        #Keeping this is like replay memory (full sampling)
+        PG.reset()
     
-    plt.plot(reward_list_test)#,label='Training Cost')
+    # EXPLOTATION
+    print("\n---------EXPLOITATION--------\n")
+    # Setup simulator
+    grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
+    grid.set_obstacles(0) #No obstacles to start
+    drone = Drone(grid, position=Point(0,0), id=99)
+    grid.set_target()
+
+    # Run simulator
+    for itr in range(10):
+        # 1. Get the current state
+        drone_loc = grid.get_drones_vector()
+        
+        # Use smaller state space for the beginning
+        #disc_map = disc_map + drone_loc
+        #state = np.append(drone_loc, disc_map)
+        state = drone_loc.copy()
+        
+        # 2. Choose an action based on observation
+        action_idx = PG.choose_action(state)
+            
+        # 3. Take action in the environment
+        reward = move_and_get_reward(drone, action_idx)
+        
+        print(grid)
+        
+        # 5. Check to see if target has been found
+        if reward >= 1:
+            break
+    
+    plt.plot(reward_list)
     plt.xlabel('Episodes')
     plt.ylabel('Cost')
-#    plt.legend()
     plt.show()

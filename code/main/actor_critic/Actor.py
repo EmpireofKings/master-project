@@ -5,26 +5,26 @@ Uses a 3 layer neural network as the policy network
 """
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow.python.framework import ops
+from sklearn.utils import shuffle
+from sklearn.preprocessing import MinMaxScaler
 
 
 class PolicyGradient:
-    def __init__(
-        self,
-        n_x,
-        n_y,
-        learning_rate,
-        reward_decay
-#        load_path=None,
-#        save_path=None
-    ):
-
-        self.n_x = n_x
-        self.n_y = n_y
+    def __init__(self,
+                 input_size,
+                 output_size,
+                 learning_rate,
+                 reward_decay):
+        self.n_x = input_size
+        self.n_y = output_size
         self.lr = learning_rate
-        self.gamma = reward_decay
+        self.discount_factor = reward_decay
 
-        self.episode_states, self.episode_actions, self.episode_rewards = [], [], []
+        self.episode_states = np.empty((0,input_size), np.float32)
+        self.episode_actions = []
+        self.episode_rewards = []
 
         self.build_network()
 
@@ -32,9 +32,9 @@ class PolicyGradient:
 
         self.sess = tf.Session()
 
-        # $ tensorboard --logdir=logs
+        # $ tensorboard --logdir=_logs_
         # http://0.0.0.0:6006/
-        tf.summary.FileWriter("logs/", self.sess.graph)
+        tf.summary.FileWriter("_logs_/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
 
@@ -47,15 +47,14 @@ class PolicyGradient:
 
             Arguments:
                 s: state
-                a: action taken
+                a: index of action taken
                 r: reward after action
         """
-        self.episode_states.append(np.array(s))
+        self.episode_states = np.vstack((self.episode_states, s))
         self.episode_rewards.append(r)
 
-        # Store actions as list of arrays
-        # e.g. for n_y = 2 -> [ array([ 1.,  0.]), array([ 0.,  1.]), array([ 0.,  1.]), array([ 1.,  0.]) ]
-        action = np.zeros(self.n_y)
+        # Store actions as list of arrays, hot-one encoding at each transition
+        action = np.zeros(self.n_y, dtype=np.float32)
         action[a] = 1
         self.episode_actions.append(action)
 
@@ -65,98 +64,123 @@ class PolicyGradient:
             Choose action based on observation
 
             Arguments:
-                observation: array of state, has shape (num_features)
+                observation: array of state, has shape (,num_features)
 
             Returns: index of action we want to choose
         """
-        # Reshape observation to (num_features, 1)
-        observation = observation[np.newaxis,:]
-
+        
+        # Reshape necessary for as tesseract expects the rows as columns
+        observation = observation.reshape(1, -1)
+        
         # Run forward propagation to get softmax probabilities
-        prob_weights = self.sess.run(self.outputs_softmax, feed_dict = {self.X: observation})
-
+        prob_weights = self.sess.run(self.network, feed_dict={self.X: observation})
+        print("action probs", prob_weights)
+        
         # Select action using a biased sample
         # this will return the index of the action we've sampled
-        action = np.random.choice(range(len(prob_weights.ravel())), p=prob_weights.ravel())
-        return action
+        #np.random.seed(1)
+        return np.argmax(prob_weights)
+        #return np.random.choice(range(self.n_y), p=prob_weights.ravel())
 
     def learn(self):
-        # Discount and normalize episode reward
-        discounted_episode_rewards_norm = np.array(self.discount_and_norm_rewards()).reshape(-1,1)
+        # Discount episode reward
+        discounted_rewards = self.discount_rewards()
 
-        # Train on episode
-        self.sess.run(self.train_op, feed_dict={
-             self.X: self.episode_states,
-             self.Y: np.array(self.episode_actions),
-             self.discounted_episode_rewards_norm: np.array(discounted_episode_rewards_norm)
-        })
-        return discounted_episode_rewards_norm
+        # DEBUG OUTPUT commented out
+        #print("episode rewards", self.episode_rewards)
+        #print("losses", self.sess.run(self.loss, feed_dict={
+        #                        self.X: self.episode_states,
+        #                        self.actions_taken: self.episode_actions,
+        #                        self.discounted_rewards: discounted_rewards}))
+        #print("discount rewards\n", discounted_rewards)
+        #print("action values\n", self.episode_actions)
+        #print("episode_states\n", self.episode_states)
+        
+        #print("policy loss", self.sess.run(self.policy_loss, feed_dict={
+        #                            self.actions_taken: self.episode_actions,
+        #                            self.discounted_rewards: discounted_rewards}))
+        
+        #test_state = np.zeros((1, self.n_x))
+        #test_state[0,0] = 1
+        
+        #print("test_state", test_state)
+        #print("Before learning:", self.sess.run(self.network, feed_dict={self.X: test_state}))
+        
+        
+        # Train on available data    
+        loss, _ = self.sess.run([self.loss, self.train_op], feed_dict={
+                            self.X: self.episode_states,
+                            self.actions_taken: self.episode_actions,
+                            self.discounted_rewards: discounted_rewards})
 
+        #print("After learning:", self.sess.run(self.network, feed_dict={self.X: test_state}))
+        
     def reset(self):
-        # Reset the episode data
-        self.episode_states, self.episode_actions, self.episode_rewards  = [], [], []
+        # Reset the episode data, clear memory
+        self.episode_states = np.empty((0,self.n_x), np.float32)
+        self.episode_actions = []
+        self.episode_rewards  = []
+
+    def discount_rewards(self):
+        count_steps = len(self.episode_rewards)
+        # Not all rewads should be negative if the last is negative
+        # TODO: Maybe not needed because of normalization
+        last_reward = self.episode_rewards[-1] if self.episode_rewards[-1] > 0 else 0
+        discounted_rewards = np.zeros((count_steps))
+        discounted_rewards[-1] = self.episode_rewards[-1]
+        
+        for t in range(count_steps - 1):
+            discounted_rewards[t] = last_reward * self.discount_factor**(count_steps-t) + self.episode_rewards[t]
+        
+        discounted_rewards = discounted_rewards.reshape(-1, 1)
+        return MinMaxScaler().fit(discounted_rewards).transform(discounted_rewards)
 
         
-
-    def discount_and_norm_rewards(self):
-        discounted_episode_rewards = []#np.zeros_like(self.episode_rewards)
-        cumulative = self.episode_rewards[-1]
-        for t in reversed(range(len(self.episode_rewards))):
-            discounted_episode_rewards.append(np.float(cumulative * self.gamma**t + self.episode_rewards[t]))
-#
-#        discounted_episode_rewards -= np.mean(discounted_episode_rewards)
-#        discounted_episode_rewards /= np.std(discounted_episode_rewards)
-        
-        return discounted_episode_rewards
-
-
     def build_network(self):
         # Create placeholders
         with tf.name_scope('inputs'):
-            self.X = tf.placeholder(tf.float32, shape=(None,self.n_x), name="X")
-            self.Y = tf.placeholder(tf.float32, shape=(None,self.n_y), name="Y")
-            self.discounted_episode_rewards_norm = tf.placeholder(tf.float32, [None, 1], name="actions_value")
-
-        # Initialize parameters
-        units_input_layer = self.n_x
-        units_layer_1 = int(self.n_x*2)
-        units_layer_2 = int(self.n_x/4)
-        units_output_layer = self.n_y
-        
-        with tf.name_scope('parameters'):
-            W1 = tf.Variable(tf.random_normal([units_input_layer, units_layer_1], stddev=1/units_input_layer**0.5), name="W1")
-            b1 = tf.Variable(tf.random_normal([units_layer_1], stddev=1/units_layer_1**0.5), name="b1")
-#            W2 = tf.Variable(tf.random_normal([units_layer_1, units_layer_2], stddev=1/units_layer_1**0.5), name="W2")
-#            b2 = tf.Variable(tf.random_normal([units_layer_2], stddev=1/units_layer_2**0.5), name="b2")
-            W3 = tf.Variable(tf.random_normal([units_layer_1, units_output_layer], stddev=1/units_layer_2**0.5), name="W3")
-            b3 = tf.Variable(tf.random_normal([units_output_layer], stddev=1/units_output_layer**0.5), name="b3")
-
-        # Forward prop
-        with tf.name_scope('layer_1'):
-            Z1 = tf.add(tf.matmul(tf.cast(self.X, tf.float32), W1),b1)
-            A1 = tf.nn.relu(Z1)
-#        with tf.name_scope('layer_2'):
-#            Z2 = tf.add(tf.matmul(A1, W2),b2)
-#            A2 = tf.nn.relu(Z2)
-        with tf.name_scope('layer_3'):
-#            Z3 = tf.add(tf.matmul(A2, W3),b3)
-            Z3 = tf.add(tf.matmul(A1, W3),b3)
-
-        # Softmax outputs, we need to transpose as tensorflow nn functions expects them in this shape
-        logits = tf.transpose(Z3)
-        labels = tf.transpose(self.Y)
-        self.outputs_softmax = tf.nn.softmax(logits, axis=0)
-        with tf.name_scope('loss'):
-            neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels)
-            loss = tf.reduce_mean(neg_log_prob * self.discounted_episode_rewards_norm)  # reward guided loss
+            self.X = tf.placeholder(tf.float32, shape=[None, self.n_x], name="X")
+            self.actions_taken = tf.placeholder(tf.float32,
+                                                shape=[None, self.n_y],
+                                                name="actions_taken")
+            self.discounted_rewards = tf.placeholder(tf.float32,
+                                                     shape=[None, 1],
+                                                     name="discounted_rewards")
             
+        # First hidden layer
+        layer_1 = tf.layers.Dense(units=4,  # num output nodes
+                                  activation=tf.nn.relu,
+                                  name="layer_1")
+
+        # Raw output layer
+        # Also called logits sometimes, don't know why
+        layer_2 = tf.layers.Dense(units=self.n_y,  # num output nodes
+                                  activation=tf.nn.relu,
+                                  name="layer_2")
+
+        self.network = tf.nn.softmax(layer_2(layer_1(self.X)), name="layer_softmax_out")
+        
+        ## Loss
+        # Element-wise multiplication, to touch only values for which we actually took an action
+        # Note that the discounded rewards are normalized between 0 and 1 in order to fit to the softmax
+        #    output of the network
+        # -> actions: [0, 1, 0, 0] * 0.1 => [0, 0.1, 0, 0]
+        # If the softmmax outup is [0, 0.9, 0, 0] but we have a low (negative before normalization) reward
+        #   this value (0.9) will be decreased
+        self.policy_loss = tf.multiply(self.actions_taken, self.discounted_rewards)
+        
+        # sum((y_hat-y_true)**2)
+        # Touch only values for which we actually took an action
+        y_hat_single_action = tf.multiply(self.actions_taken, self.network)
+        self.loss = tf.reduce_sum((y_hat_single_action - self.policy_loss)**2)
+        
         with tf.name_scope('train'):
-            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
-    def learning_rate(self,multiplier):
-        self.lr = self.lr*multiplier
+            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+    
+    def adjust_learning_rate(self,multiplier):
+        self.lr = self.lr * multiplier
         
     def plot_cost(self):
-        import matplotlib.pyplot as plt
         plt.plot(np.arange(len(self.cost_history)), self.cost_history)
         plt.ylabel('Cost')
         plt.xlabel('Training Steps')
