@@ -21,7 +21,7 @@ input_size = grid_flat * num_channels
 action_size = 4 #number of actions to choose from
 e_greedy = 0.4
 grid_seed = 1
-max_iterations = int(grid_flat/2) #it will take this many actions to go to all cells in the grid
+max_iterations = int(grid_flat/2) #it will take this many actions to go to half of the cells in the grid
 
 
 def move_and_get_reward(drone, action_idx, disc_map):
@@ -36,10 +36,10 @@ def move_and_get_reward(drone, action_idx, disc_map):
             # the penalty will increase linearly with each visit
             location_point = drone.get_position()
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
-            return -disc_map[location]
+            return -disc_map[location]-1
             #return 0.1
     except (PositioningError, IndexError):
-        # We hit an obsticle or tried to exit the grid
+        # We hit an obstacle or tried to exit the grid
         return -10 # arbitrary
             
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     target_found = 0    
     PG = PolicyGradient(input_size, action_size,
                         learning_rate=0.01,
-                        reward_decay=0.9)
+                        reward_decay=0.99)
     
     global_disc_map = np.zeros(grid_flat)
     
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         reward_list.append(rewards)
         
     print("\n-------TRAINING------\n")
-    print("Target Found in: ",target_found/EPISODES)
+    print("Target Found in: ",int(100*target_found/EPISODES),'%  of Episodes')
     print("Total training discovery map:\n", global_disc_map.reshape(gridsize[0], gridsize[1]))
     
     # EXPLOTATION
@@ -145,10 +145,11 @@ if __name__ == "__main__":
 
     
     print("Exploitation discovery map:\n", disc_map.reshape(gridsize[0], gridsize[1]))
-    print(grid)
+    print('\n',grid)
     
     plt.plot(reward_list)
     plt.title('Drone Search')
     plt.xlabel('Episodes')
     plt.ylabel('Cost')
+    plt.rcParams["figure.figsize"]=(10,5)
     plt.show()
