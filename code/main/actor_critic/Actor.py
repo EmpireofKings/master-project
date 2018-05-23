@@ -6,8 +6,6 @@ Uses a 3 layer neural network as the policy network
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.python.framework import ops
-from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -74,19 +72,18 @@ class PolicyGradient:
         
         # Run forward propagation to get softmax probabilities
         prob_weights = self.sess.run(self.network, feed_dict={self.X: observation})
-        #print("action probs", prob_weights)
         
         # Select action using a biased sample
         # this will return the index of the action we've sampled
-        #np.random.seed(1)
         return np.argmax(prob_weights)
+        #np.random.seed(1)
         #return np.random.choice(range(self.n_y), p=prob_weights.ravel())
 
     def learn(self):
         # Discount episode reward
         discounted_rewards = self.discount_rewards()
 
-        # DEBUG OUTPUT commented out
+        ## DEBUG OUTPUT commented out
         #print("episode rewards", self.episode_rewards)
         #print("losses", self.sess.run(self.loss, feed_dict={
         #                        self.X: self.episode_states,
@@ -105,7 +102,7 @@ class PolicyGradient:
         
         #print("test_state", test_state)
         #print("Before learning:", self.sess.run(self.network, feed_dict={self.X: test_state}))
-        
+        ## DEBUG END
         
         # Train on available data    
         loss, _ = self.sess.run([self.loss, self.train_op], feed_dict={
@@ -152,10 +149,9 @@ class PolicyGradient:
                                   activation=tf.nn.relu,
                                   name="layer_1")
 
-        # Raw output layer
+        # Raw output layer, therefore no activation function
         # Also called logits sometimes, don't know why
         layer_2 = tf.layers.Dense(units=self.n_y,  # num output nodes
-                                  activation=tf.nn.relu,
                                   name="layer_2")
 
         self.network = tf.nn.softmax(layer_2(layer_1(self.X)), name="layer_softmax_out")

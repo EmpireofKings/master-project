@@ -14,8 +14,7 @@ rewards = []
 
 gridsize = [5, 10]
 grid_flat = gridsize[0] * gridsize[1]
-# 1 for drone location, 3 more for map of visited locations?
-# other drone and obstacle locations
+# 1 for drone location, 1 for map of visited locations
 num_channels = 2
 input_size = grid_flat * num_channels
 
@@ -73,12 +72,10 @@ if __name__ == "__main__":
             # Use smaller state space for the beginning
             disc_map += drone_loc
             state = np.append(drone_loc, disc_map)
-            #state = drone_loc.copy()
             
             # 2. Choose an action based on observation
             if np.random.randint(1,100)/100 < e_greedy:
                 action_idx = np.random.randint(0, action_size)
-                #print("random", action_idx)
             else:
                 action_idx = PG.choose_action(state)
                 
@@ -90,6 +87,7 @@ if __name__ == "__main__":
             
             # 5. Check to see if target has been found
             if reward >= 1:
+                disc_map += grid.get_drones_vector()
                 break
         
         global_disc_map += disc_map
@@ -118,22 +116,19 @@ if __name__ == "__main__":
     disc_map = np.zeros(grid_flat)
 
     # Run simulator
-    for itr in range(20):
+    for itr in range(max_iterations):
         # 1. Get the current state
         drone_loc = grid.get_drones_vector()
         
         # Use smaller state space for the beginning
         disc_map = disc_map + drone_loc
         state = np.append(drone_loc, disc_map)
-        #state = drone_loc.copy()
         
         # 2. Choose an action based on observation
         action_idx = PG.choose_action(state)
             
         # 3. Take action in the environment
         reward = move_and_get_reward(drone, action_idx, disc_map)
-        
-        #print(grid)
         
         # 5. Check to see if target has been found
         if reward >= 1:
