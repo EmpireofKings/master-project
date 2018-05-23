@@ -123,14 +123,16 @@ class PolicyGradient:
         # Not all rewads should be negative if the last is negative
         # TODO: Maybe not needed because of normalization
         last_reward = self.episode_rewards[-1] if self.episode_rewards[-1] > 0 else 0
-        discounted_rewards = np.zeros((count_steps))
-        discounted_rewards[-1] = self.episode_rewards[-1]
+        discounted_rewards = np.zeros((count_steps+1))
+        discounted_rewards[-2] = self.episode_rewards[-1]
         
         for t in range(count_steps - 1):
             discounted_rewards[t] = last_reward * self.discount_factor**(count_steps-t) + self.episode_rewards[t]
         
+        discounted_rewards[-1]=10
+        
         discounted_rewards = discounted_rewards.reshape(-1, 1)
-        return MinMaxScaler().fit(discounted_rewards).transform(discounted_rewards)
+        return MinMaxScaler().fit(discounted_rewards).transform(discounted_rewards)[:count_steps]
 
         
     def build_network(self):
@@ -172,12 +174,3 @@ class PolicyGradient:
         
         with tf.name_scope('train'):
             self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
-    
-    def adjust_learning_rate(self,multiplier):
-        self.lr = self.lr * multiplier
-        
-    def plot_cost(self):
-        plt.plot(np.arange(len(self.cost_history)), self.cost_history)
-        plt.ylabel('Cost')
-        plt.xlabel('Training Steps')
-        plt.show()
