@@ -73,11 +73,7 @@ class ActorCritic:
         # Run forward propagation to get softmax probabilities
         prob_weights = self.sess.run(self.action_NN, feed_dict={self.X: observation})
         
-        # Select action using a biased sample
-        # this will return the index of the action we've sampled
         return np.argmax(prob_weights)
-        #np.random.seed(1)
-        #return np.random.choice(range(self.n_y), p=prob_weights.ravel())
 
     def learn(self, last_state, was_target_found):
         # Discount episode reward
