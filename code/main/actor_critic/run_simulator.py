@@ -1,4 +1,4 @@
-from Actor import PolicyGradient
+from ActorCritic import ActorCritic
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -9,17 +9,17 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 150
+EPISODES = 400
 rewards = []
 
-gridsize = [10, 10]
+gridsize = [5, 10]
 grid_flat = gridsize[0] * gridsize[1]
 # 1 for drone location, 1 for map of visited locations
 num_channels = 2
 input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
-e_greedy = 0.4
+e_greedy = 0.2
 grid_seed = 1
 max_iterations = int(grid_flat/2) #it will take this many actions to go to half of the cells in the grid
 
@@ -47,16 +47,16 @@ def move_and_get_reward(drone, action_idx, disc_map):
 if __name__ == "__main__":
     reward_list = []
     target_found = 0    
-    PG = PolicyGradient(input_size, action_size,
-                        learning_rate=0.01,
-                        reward_decay=0.99)
+    PG = ActorCritic(input_size, action_size,
+                     learning_rate=0.01,
+                     reward_decay=0.99)
     
     global_disc_map = np.zeros(grid_flat)
     
     
     
     for episode in range(EPISODES):
-#        print("Episode", episode, end="\r")
+        print("Episode", episode, end="\r")
                 
         # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
@@ -65,7 +65,8 @@ if __name__ == "__main__":
         grid.set_target()
         
         disc_map = np.zeros(grid_flat)
-
+        was_target_found = False
+        
         # Generate traning data
         for itr in range(max_iterations):
             # 1. Get the current state
@@ -91,6 +92,7 @@ if __name__ == "__main__":
             if reward >= 1:
                 disc_map += grid.get_drones_vector()
                 target_found+=1
+                was_target_found = True
                 break
         
         
@@ -98,8 +100,12 @@ if __name__ == "__main__":
         global_disc_map += disc_map
         #print("\n-------TRAINING------\n")
         
+        # Get last state for learning
+        disc_map += grid.get_drones_vector()
+        last_state = np.append(grid.get_drones_vector(), disc_map)
+        
         # 5. Train neural network
-        PG.learn()
+        PG.learn(last_state, was_target_found)
         
 #        reward_list.append(np.sum(PG.episode_rewards))
         
@@ -129,6 +135,9 @@ if __name__ == "__main__":
             # 3. Take action in the environment
             reward = move_and_get_reward(drone, action_idx, disc_map)
             rewards += reward
+            
+            PG.store_transition(state, action_idx, reward)
+            
             # 5. Check to see if target has been found
             if reward >= 1:
                 break
@@ -146,6 +155,8 @@ if __name__ == "__main__":
     
     print("Exploitation discovery map:\n", disc_map.reshape(gridsize[0], gridsize[1]))
     print('\n',grid)
+    
+    PG.print_value_estimation()
     
     plt.plot(reward_list)
     plt.title('Drone Search')
