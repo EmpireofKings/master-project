@@ -158,7 +158,7 @@ class PolicyGradient:
                                                 name="actions_taken")
         """Variables"""
         inputs = self.n_x
-        nodes_l1 = int(self.n_x)
+        nodes_l1 = int(self.n_x*2)
         nodes_l2 = int(self.n_x/2)
         outputs = self.n_y
         
@@ -173,6 +173,7 @@ class PolicyGradient:
                                           mode="fan_avg",
                                           distribution="uniform",
                                           dtype=tf.float32),
+                                  bias_initializer=tf.constant_initializer(0.1),
                                   name="layer_1")
 
         
@@ -184,6 +185,7 @@ class PolicyGradient:
                                           mode="fan_avg",
                                           distribution="uniform",
                                           dtype=tf.float32),
+                                  bias_initializer=tf.constant_initializer(0.1),
                                   name="layer_2")
         
         """Output layer"""
