@@ -28,7 +28,7 @@ max_iterations = int(grid_flat/2)
 val_decay = 0.5
 l_rate = 0.0005
 reg_factor = 0.1
-EPISODES = 3000
+EPISODES = 100
 
 print('--- HYPERPARAMETERS ---')
 print(' e_greedy:       ',e_greedy)
@@ -38,7 +38,7 @@ print(' l_rate:         ',l_rate)
 print(' reg_factor:     ',reg_factor)
 print(' Episodes:       ',EPISODES)
 
-num_exec= 3
+num_exec= 1
 
 drone_start_locs = [(0,0),(gridsize[0]-1,0),(0,gridsize[1]-1),(gridsize[0]-1,gridsize[1]-1)]
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         
         global_disc_map = np.zeros(grid_flat)
         
-        PG_old = PG
+        PG_old = PG #change to copy not ref
         
         for episode in range(EPISODES):
             
@@ -158,14 +158,14 @@ if __name__ == "__main__":
     
                 # Store transition for training
                 PG.store_transition(state, reward, action_idx, n_value)
-                state = state_next
+                state = state_next #change ref to copy
                 
                 if np.argmax(drone_loc) == np.argmax(targ_state) and action_idx == 1:
                     opt_act+=1
                     
                 
                 """Enable the following to have iterative updates"""
-                PG_Old = PG
+                PG_Old = PG # change ref to copy
                 PG.learn()
                 PG.reset() #Disabling this is episodic replay memory (full sampling)
                 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
             
             
             """Enable the following to have episodic updates"""
-#            PG_old = PG
+#            PG_old = PG # change ref to copy
 #            PG.learn()
 #            PG.reset() #Disabling this is replay memory (full sampling)
             
@@ -231,7 +231,7 @@ if __name__ == "__main__":
                 loss = (reward + n_value*val_decay - qval)**2
                 losses+=loss
                 
-                state = state_next
+                state = state_next # change ref to copy
                 
                 # End Episode if target has been found
                 if target_found:
