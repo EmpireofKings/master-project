@@ -1,0 +1,32 @@
+--- HYPERPARAMETERS ---
+ e_greedy:        0.8
+ max_iterations:  25
+ val_decay:       0.9
+ l_rate:          0.0001
+ reg_factor:      0.1
+ Episodes:        7500
+
+
+
+def move_and_get_reward(drone, action_idx, disc_map,itr):
+    """Move the drone and get the reward."""
+    cost = (itr+1)/(max_iterations*10)
+    
+    location_point = drone.get_position()
+    location = location_point.get_y() * gridsize[1] + location_point.get_x()
+    bad_move = disc_map[location]/(max_iterations*5)
+    
+    try:
+        drone.move(Direction(action_idx))
+        if "T" in drone.observe_surrounding():
+            # arbitrary reward for finding target: This will always be positive
+            return 1 - cost,True
+        else:
+            # if a drone has been to a location multiple times,
+            # the penalty will increase linearly with each visit
+            return -bad_move-cost,False
+
+    except (PositioningError, IndexError):
+        # We hit an obstacle or tried to exit the grid
+        # Penalty is arbitrary but includes the cost and the bad_move penalty
+        return -0.4-bad_move-cost,False
