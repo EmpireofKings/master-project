@@ -7,6 +7,11 @@
  Episodes:        7500
 
 
+Network stucture: 2 hidden layers (ReLU) activation
+layer 1: gridsize*2 nodes
+layer 2: gridsize nodes
+output: 4 actions
+
 
 def move_and_get_reward(drone, action_idx, disc_map,itr):
     """Move the drone and get the reward."""
