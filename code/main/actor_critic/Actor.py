@@ -158,7 +158,7 @@ class PolicyGradient:
                                                 name="actions_taken")
         """Variables"""
         inputs = self.n_x
-        nodes_l1 = int(self.n_x*2)
+        nodes_l1 = int(self.n_x)
         nodes_l2 = int(self.n_x/2)
         outputs = self.n_y
         
@@ -197,6 +197,7 @@ class PolicyGradient:
                                           dtype=tf.float32),
                                   name = "layer_3")
 
+#        self.network = layer_3(layer_1(self.X))
         self.network = layer_3(layer_2(layer_1(self.X)))
         
 #        
