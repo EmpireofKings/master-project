@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys, os
 from random import shuffle
+import datetime
 sys.path.append(os.path.abspath("../simulator")) #Where Simulator.py is located
 
 from Simulator import *
@@ -437,3 +438,128 @@ if __name__ == "__main__":
     plt.xlabel('Episodes (x4)')
     plt.ylabel('Iterations')
     plt.show()
+
+
+save_data = False
+
+if save_data:
+    save_path = os.path.join(os.getcwd(),"Results")
+    run_folder = os.path.join(save_path, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+    os.makedirs(run_folder)
+    
+    
+    """Hyperparameters"""
+    hyperp = []
+    hyperp.append('--- HYPERPARAMETERS ---')
+    hyperp.append(' e_greedy:       '+str(e_greedy))
+    hyperp.append(' max_iterations: '+str(max_iterations))
+    hyperp.append(' val_decay:      '+str(val_decay))
+    hyperp.append(' l_rate:         '+str(l_rate))
+    hyperp.append(' reg_factor:     '+str(reg_factor))
+    hyperp.append(' Episodes:       '+str(EPISODES))
+    
+    print(hyperp)
+    file_name = 'Hyperparameters'
+    save_file = os.path.join(run_folder,file_name+".txt")
+    file = open(save_file,"w")
+    for item in hyperp:
+        file.write("%s\n" % item)
+#    file.write(input(hyperp))
+    file.close()
+#    np.savetxt(save_file,np.array(hyperp))
+    
+    
+    """Reward Lists"""
+    rewards_dir = os.path.join(run_folder,"Rewards")
+    os.makedirs(rewards_dir)
+    
+    file_name = 'reward_list0'
+    save_file = os.path.join(rewards_dir,file_name+".txt")
+    np.savetxt(save_file,reward_list0)
+    
+    file_name = 'reward_list1'
+    save_file = os.path.join(rewards_dir,file_name+".txt")
+    np.savetxt(save_file,reward_list1)
+    
+    file_name = 'reward_list2'
+    save_file = os.path.join(rewards_dir,file_name+".txt")
+    np.savetxt(save_file,reward_list2)
+    
+    file_name = 'reward_list3'
+    save_file = os.path.join(rewards_dir,file_name+".txt")
+    np.savetxt(save_file,reward_list3)
+    
+    
+    
+    """Rewards / Iterations Lists"""   
+    rewards_itr = os.path.join(run_folder,"Rewards_Itr")
+    os.makedirs(rewards_itr)
+    
+    file_name = 'rewards_itr_test0'
+    save_file = os.path.join(rewards_itr,file_name+".txt")
+    np.savetxt(save_file,rewards_itr_test0)
+    
+    file_name = 'rewards_itr_test1'
+    save_file = os.path.join(rewards_itr,file_name+".txt")
+    np.savetxt(save_file,rewards_itr_test1)
+    
+    file_name = 'rewards_itr_test2'
+    save_file = os.path.join(rewards_itr,file_name+".txt")
+    np.savetxt(save_file,rewards_itr_test2)
+    
+    file_name = 'rewards_itr_test3'
+    save_file = os.path.join(rewards_itr,file_name+".txt")
+    np.savetxt(save_file,rewards_itr_test3)
+
+
+
+    """Loss Lists"""   
+    loss_dir = os.path.join(run_folder,"Losses")
+    os.makedirs(loss_dir)
+    
+    file_name = 'losses_train'
+    save_file = os.path.join(loss_dir,file_name+".txt")
+    np.savetxt(save_file,losses_train)
+    
+    file_name = 'losses_test0'
+    save_file = os.path.join(loss_dir,file_name+".txt")
+    np.savetxt(save_file,losses_test0)
+    
+    file_name = 'losses_test1'
+    save_file = os.path.join(loss_dir,file_name+".txt")
+    np.savetxt(save_file,losses_test1)
+    
+    file_name = 'losses_test2'
+    save_file = os.path.join(loss_dir,file_name+".txt")
+    np.savetxt(save_file,losses_test2)
+    
+    file_name = 'losses_test3'
+    save_file = os.path.join(loss_dir,file_name+".txt")
+    np.savetxt(save_file,losses_test3)
+        
+
+    
+    """Iter Lists"""   
+    itr_dir = os.path.join(run_folder,"Iterations")
+    os.makedirs(itr_dir)
+    
+    file_name = 'iter_ep_train'
+    save_file = os.path.join(itr_dir,file_name+".txt")
+    np.savetxt(save_file,iter_ep_train)
+    
+    file_name = 'iter_ep_test0'
+    save_file = os.path.join(itr_dir,file_name+".txt")
+    np.savetxt(save_file,iter_ep_test0)
+    
+    file_name = 'iter_ep_test1'
+    save_file = os.path.join(itr_dir,file_name+".txt")
+    np.savetxt(save_file,iter_ep_test1)
+    
+    file_name = 'iter_ep_test2'
+    save_file = os.path.join(itr_dir,file_name+".txt")
+    np.savetxt(save_file,iter_ep_test2)
+    
+    file_name = 'iter_ep_test3'
+    save_file = os.path.join(itr_dir,file_name+".txt")
+    np.savetxt(save_file,iter_ep_test3)
+    
