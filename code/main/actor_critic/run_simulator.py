@@ -21,7 +21,7 @@ input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
 grid_seed = 1
-
+num_obs = 5 #Number of obstacles to generate the grid with
 
 e_greedy = 0.8
 max_iterations = int(grid_flat/2)
@@ -37,6 +37,8 @@ print(' val_decay:      ',val_decay)
 print(' l_rate:         ',l_rate)
 print(' reg_factor:     ',reg_factor)
 print(' Episodes:       ',EPISODES)
+print(' Grid seed:      ',grid_seed)
+print(' Num Obstacles:  ',num_obs)
 
 num_exec= 3
 
@@ -71,7 +73,7 @@ def move_and_get_reward(drone, action_idx, disc_map,itr):
 def test_simulator(PG,max_iterations,start_loc):
     #Reset Grid and variables
     grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
-    grid.set_obstacles(0) #No obstacles to start
+    grid.set_obstacles(num_obs) 
     drone = Drone(grid, position=Point(start_loc[1],start_loc[0]), id=99)
     grid.set_target()
     rewards = 0
@@ -117,26 +119,23 @@ def test_simulator(PG,max_iterations,start_loc):
 
 
 def iter_ep(iter_episode):
+    #Averages over the number of executions and number of start locations
     iter_ep_test = np.mean(np.array(iter_episode).reshape(num_exec,-1).T,axis=1)
     iter_ep_test = np.mean(np.array(iter_ep_test).reshape(-1,len(drone_start_locs)),axis=1)
     return iter_ep_test
 
 
-def loss_format(losses):
-    return np.mean(np.array(losses).reshape(num_exec,-1).T,axis=1)
-
-
-def reward_format(rewards_itr):
-    return np.mean(np.array(rewards_itr).reshape(num_exec,-1).T,axis=1)
-
+def run_format(data):
+    #Average over the number of executions
+    return np.mean(np.array(data).reshape(num_exec,-1).T,axis=1)
 
 
 if __name__ == "__main__":
     
     grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
-    grid.set_obstacles(0) #No obstacles to start
+    grid.set_obstacles(num_obs)
     
-    drone = Drone(grid, position=Point(0,0), id=99)
+    drone = Drone(grid, position=Point(0,1), id=99) #0,1 if obstacles are implemented
     
     drone_loc = grid.get_drones_vector()
     disc_map = np.zeros(grid_flat)
@@ -148,7 +147,7 @@ if __name__ == "__main__":
     target_state = np.append(targ_state,disc_map)
     
     start_point_order = np.array([0,1,2,3])
-    drone_start_locs = [(0,0),(gridsize[0]-1,0),(0,gridsize[1]-1),(gridsize[0]-1,gridsize[1]-1)]
+    drone_start_locs = [(0,1),(gridsize[0]-1,0),(0,gridsize[1]-1),(gridsize[0]-1,gridsize[1]-1)]
     
     
     """Plot Parameters"""
@@ -201,7 +200,7 @@ if __name__ == "__main__":
             """Training Environment"""
             # Setup simulator
             grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
-            grid.set_obstacles(0) #No obstacles to start
+            grid.set_obstacles(num_obs) 
             
             if episode%len(start_point_order)==0:
                 shuffle(start_point_order)
@@ -361,10 +360,10 @@ if __name__ == "__main__":
     
     """Test Reward Plot"""
     
-    reward_list0 = reward_format(reward_list0)
-    reward_list1 = reward_format(reward_list1)
-    reward_list2 = reward_format(reward_list2)
-    reward_list3 = reward_format(reward_list3)
+    reward_list0 = run_format(reward_list0)
+    reward_list1 = run_format(reward_list1)
+    reward_list2 = run_format(reward_list2)
+    reward_list3 = run_format(reward_list3)
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
     plt.plot(reward_list0,label = 'Starting Point(0,0)')
@@ -380,10 +379,10 @@ if __name__ == "__main__":
     
     """Test Reward per iteration Plot"""
     
-    rewards_itr_test0 = reward_format(rewards_itr_test0)
-    rewards_itr_test1 = reward_format(rewards_itr_test1)
-    rewards_itr_test2 = reward_format(rewards_itr_test2)
-    rewards_itr_test3 = reward_format(rewards_itr_test3)
+    rewards_itr_test0 = run_format(rewards_itr_test0)
+    rewards_itr_test1 = run_format(rewards_itr_test1)
+    rewards_itr_test2 = run_format(rewards_itr_test2)
+    rewards_itr_test3 = run_format(rewards_itr_test3)
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
     plt.plot(rewards_itr_test0,label = 'Starting Point(0,0)')
@@ -399,11 +398,11 @@ if __name__ == "__main__":
     
     """Test Reward Plot"""
    
-    losses_train = loss_format(losses_train)
-    losses_test0 = loss_format(losses_test0)
-    losses_test1 = loss_format(losses_test1)
-    losses_test2 = loss_format(losses_test2)
-    losses_test3 = loss_format(losses_test3)
+    losses_train = run_format(losses_train)
+    losses_test0 = run_format(losses_test0)
+    losses_test1 = run_format(losses_test1)
+    losses_test2 = run_format(losses_test2)
+    losses_test3 = run_format(losses_test3)
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
     plt.plot(losses_train,label = 'Train')
@@ -457,8 +456,9 @@ if save_data:
     hyperp.append(' l_rate:         '+str(l_rate))
     hyperp.append(' reg_factor:     '+str(reg_factor))
     hyperp.append(' Episodes:       '+str(EPISODES))
-    
-    print(hyperp)
+    hyperp.append(' Grid seed:      '+str(grid_seed))
+    hyperp.append(' Num Obstacles:  '+str(num_obs))
+
     file_name = 'Hyperparameters'
     save_file = os.path.join(run_folder,file_name+".txt")
     file = open(save_file,"w")
