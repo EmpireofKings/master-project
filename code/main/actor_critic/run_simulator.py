@@ -491,27 +491,27 @@ if save_data:
     
     
     
-    """Rewards / Iterations Lists"""   
-    rewards_itr = os.path.join(run_folder,"Rewards_Itr")
-    os.makedirs(rewards_itr)
-    
-    file_name = 'rewards_itr_test0'
-    save_file = os.path.join(rewards_itr,file_name+".txt")
-    np.savetxt(save_file,rewards_itr_test0)
-    
-    file_name = 'rewards_itr_test1'
-    save_file = os.path.join(rewards_itr,file_name+".txt")
-    np.savetxt(save_file,rewards_itr_test1)
-    
-    file_name = 'rewards_itr_test2'
-    save_file = os.path.join(rewards_itr,file_name+".txt")
-    np.savetxt(save_file,rewards_itr_test2)
-    
-    file_name = 'rewards_itr_test3'
-    save_file = os.path.join(rewards_itr,file_name+".txt")
-    np.savetxt(save_file,rewards_itr_test3)
-
-
+#    """Rewards / Iterations Lists"""   
+#    rewards_itr = os.path.join(run_folder,"Rewards_Itr")
+#    os.makedirs(rewards_itr)
+#    
+#    file_name = 'rewards_itr_test0'
+#    save_file = os.path.join(rewards_itr,file_name+".txt")
+#    np.savetxt(save_file,rewards_itr_test0)
+#    
+#    file_name = 'rewards_itr_test1'
+#    save_file = os.path.join(rewards_itr,file_name+".txt")
+#    np.savetxt(save_file,rewards_itr_test1)
+#    
+#    file_name = 'rewards_itr_test2'
+#    save_file = os.path.join(rewards_itr,file_name+".txt")
+#    np.savetxt(save_file,rewards_itr_test2)
+#    
+#    file_name = 'rewards_itr_test3'
+#    save_file = os.path.join(rewards_itr,file_name+".txt")
+#    np.savetxt(save_file,rewards_itr_test3)
+#
+#
 
     """Loss Lists"""   
     loss_dir = os.path.join(run_folder,"Losses")
