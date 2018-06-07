@@ -21,7 +21,7 @@ class ActorCritic:
         self.lr = learning_rate
         self.discount_factor = reward_decay
 
-        self.entropy_factor = 0.2
+        self.entropy_factor = 0.1
 
         self.episode_states = np.empty((0,input_size), np.float32)
         self.episode_actions = []
@@ -71,7 +71,7 @@ class ActorCritic:
 
         with tf.name_scope("critic_loss"):
             # advantage squared
-            self.critic_loss = (self.R - self.critic_network)**2
+            self.critic_loss = tf.square(self.R - self.critic_network)
 
             tf.summary.scalar("critic_loss", tf.reduce_sum(self.critic_loss))
 
@@ -145,15 +145,28 @@ class ActorCritic:
         tf.summary.histogram("activations", act)
 
         return act
+        
+    def shared_hidden_layers():
+        # 1st: same number of nodes as input
+        
+        # 2nd: half number of inputs
+        
+        # kernel initialization: tf.variance_scaling_initializer
+        # dist: uniform,
+        # scale: 2.0 (due to relu)
+        # mode="fan_avg"
+        #
+        # tf.constant_initializer(0.1)
 
 
     def policy_nn(self):
         with tf.variable_scope("hidden1"):
             in_hidden1 = self.n_x
-            out_hidden1 = 30
+            out_hidden1 = 100
             hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
         with tf.variable_scope("action_raw"):
             out_policy = 4
+            # No ReLU here!!!
             policy_raw = self.dense(hidden1, [out_hidden1, out_policy])
         return policy_raw
 
@@ -165,10 +178,11 @@ class ActorCritic:
     def critic_nn(self):
         with tf.variable_scope("hidden1"):
             in_hidden1 = self.n_x
-            out_hidden1 = 30
+            out_hidden1 = 100
             hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
         with tf.variable_scope("critic_raw"):
             out_critic = 1
+            # No ReLU here!!
             critic_raw = self.dense(hidden1, [out_hidden1, out_critic])
         return critic_raw
 

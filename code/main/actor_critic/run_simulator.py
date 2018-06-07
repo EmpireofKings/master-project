@@ -9,7 +9,7 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 50
+EPISODES = 500
 rewards = []
 learning_rate = 1e-4
 
@@ -20,28 +20,33 @@ num_channels = 2
 input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
-e_greedy = 0.4
+e_greedy = 0.8
 grid_seed = 1
 max_iterations = int(grid_flat/2) #it will take this many actions to go to half of the cells in the grid
 
 
-def move_and_get_reward(drone, action_idx, disc_map):
+def move_and_get_reward(drone, action_idx, disc_map, itr):
+    movement_cost = (itr+1) / max_iterations * 10
+    
     """Move the drone and get the reward."""
     try:
         drone.move(Direction(action_idx))
         if "T" in drone.observe_surrounding():
             # arbitrary reward for finding target
-            return 10
+            return 1 - movement_cost
         else:
             # if a drone has been to a location multiple times,
             # the penalty will increase linearly with each visit
             location_point = drone.get_position()
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
-            return -disc_map[location]
+    
+            return -disc_map[location] / max_iterations * 5
             #return 0.1
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
-        return -10 # arbitrary
+        location_point = drone.get_position()
+        location = location_point.get_y() * gridsize[1] + location_point.get_x()
+        return -disc_map[location] / max_iterations * 5 - 0.4 # arbitrary
 
 
 
@@ -62,6 +67,8 @@ if __name__ == "__main__":
         # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
         grid.set_obstacles(0) #No obstacles to start
+        
+        # TODO: Change drone start randomly somewhere at the border
         drone = Drone(grid, position=Point(0,0), id=99)
         grid.set_target()
 
@@ -78,6 +85,7 @@ if __name__ == "__main__":
             state = np.append(drone_loc, disc_map)
 
             # 2. Choose an action based on observation
+            # TODO: Decrease e-greedy for frequently visited cells
             if np.random.randint(1,100)/100 < e_greedy:
                 action_idx = np.random.randint(0, action_size)
             else:
