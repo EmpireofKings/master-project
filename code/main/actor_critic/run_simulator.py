@@ -21,7 +21,7 @@ input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
 grid_seed = 1
-num_obs = 5 #Number of obstacles to generate the grid with
+num_obs = 8 #Number of obstacles to generate the grid with
 
 e_greedy = 0.8
 max_iterations = int(grid_flat/2)
@@ -149,6 +149,7 @@ if __name__ == "__main__":
     start_point_order = np.array([0,1,2,3])
     drone_start_locs = [(0,1),(gridsize[0]-1,0),(0,gridsize[1]-1),(gridsize[0]-1,gridsize[1]-1)]
     
+    print(grid)
     
     """Plot Parameters"""
     plt.rcParams.update({'font.size': 20})
@@ -439,7 +440,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-save_data = False
+save_data = True
 
 if save_data:
     save_path = os.path.join(os.getcwd(),"Results")
