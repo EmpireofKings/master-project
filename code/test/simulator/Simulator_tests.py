@@ -66,7 +66,19 @@ class DroneTestCase(unittest.TestCase):
         self.assertFalse(g1.is_accessible(Point(1, 0)), "Test method 'is_obsticle'")
         with self.assertRaises(PositioningError) as context:
             d1 = Drone(g1, init_pos, id)
-
+            
+    def test_drone_location_one_hot(self):
+        g1 = Grid(10, 5, SEED)
+        g1.set_obstacles(10)
+        
+        init_pos = Point(4,3) # Occupied by an obsticle
+        id = 1
+        
+        d1 = Drone(g1, init_pos, id)
+        pos_one_hot = d1.get_position_one_hot()
+        
+        self.assertEqual(pos_one_hot[3*5+4], 1, "Location should be one")
+        
     def test_move_drone(self):
         #  Grid
         g1 = Grid(10, 5, SEED)

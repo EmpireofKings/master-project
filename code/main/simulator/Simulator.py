@@ -1,4 +1,5 @@
 # Simulator module
+import numpy as np 
 
 from enum import Enum
 class Direction(Enum):
@@ -89,13 +90,19 @@ class Drone(object):
     def get_position(self):
         return self.position
     
+    def get_position_one_hot(self):
+        pos_flat = self.position.get_y() * self.grid.size[1] + self.position.get_x()
+        pos_one_hot = np.zeros(self.grid.size).ravel()
+        pos_one_hot[pos_flat] = 1
+        return pos_one_hot
+        
     def get_id(self):
         return self.id
         
     def get_trace(self):
         return self.trace
 
-import numpy as np     
+        
 class Grid(object):
 
     def __init__(self, size_y, size_x, seed):
@@ -201,9 +208,6 @@ class Grid(object):
         
     def reset_value(self, point):
         self._grid[point.get_y(), point.get_x()] = None
-    
-    def get_drones_vector(self):
-        return (self._grid == self.drone.get_id()).astype(bool).astype(int).ravel()
         
     def get_obsticles_vector(self):
         return (self._grid == "O").astype(int).ravel()
