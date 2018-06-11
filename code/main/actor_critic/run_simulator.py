@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import sys, os
-sys.path.append(os.path.abspath("../simulator"))#Change path to be wherever Simulator.py is stored locally
+sys.path.append(os.path.abspath("../simulator"))
 
 from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 500
+EPISODES = 5000
 rewards = []
 learning_rate = 1e-4
 
@@ -26,32 +26,34 @@ max_iterations = int(grid_flat/2) #it will take this many actions to go to half 
 
 
 def move_and_get_reward(drone, action_idx, disc_map, itr):
-    movement_cost = (itr+1) / max_iterations * 10
+    movement_cost = (itr+1) / (max_iterations * 10)
     
     """Move the drone and get the reward."""
     try:
         drone.move(Direction(action_idx))
         if "T" in drone.observe_surrounding():
             # arbitrary reward for finding target
-            return 1 - movement_cost
+            return 1 - movement_cost, True
         else:
             # if a drone has been to a location multiple times,
             # the penalty will increase linearly with each visit
             location_point = drone.get_position()
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
     
-            return -disc_map[location] / max_iterations * 5
+            return -disc_map[location] / max_iterations * 5, False
             #return 0.1
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
         location_point = drone.get_position()
         location = location_point.get_y() * gridsize[1] + location_point.get_x()
-        return -disc_map[location] / max_iterations * 5 - 0.4 # arbitrary
+        return -disc_map[location] / max_iterations * 5 - 0.4, False # arbitrary
 
 
 
 if __name__ == "__main__":
-    reward_list = []
+    reward_list = [[], [], [], []]
+    reward_list_train = [[], [], [], []]
+    action_values_tl = [[], [], [], []]
     target_found = 0
     PG = ActorCritic(input_size, action_size,
                      learning_rate,
@@ -59,52 +61,62 @@ if __name__ == "__main__":
 
     global_disc_map = np.zeros(grid_flat)
 
+    
+    positions = [Point(0,0), Point(0,4), Point(9,4), Point(9,0)]
 
 
     for episode in range(EPISODES):
         print("Episode", episode, end="\r")
+        
+        position = positions[episode % 4]
 
         # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
         grid.set_obstacles(0) #No obstacles to start
         
         # TODO: Change drone start randomly somewhere at the border
-        drone = Drone(grid, position=Point(0,0), id=99)
+        drone = Drone(grid, position, id=99)
         grid.set_target()
 
         disc_map = np.zeros(grid_flat)
         was_target_found = False
+        rewards = 0
 
         # Generate traning data
         for itr in range(max_iterations):
+        
             # 1. Get the current state
             drone_loc = grid.get_drones_vector()
 
             # Use smaller state space for the beginning
             disc_map += drone_loc
             state = np.append(drone_loc, disc_map)
+            
 
             # 2. Choose an action based on observation
             # TODO: Decrease e-greedy for frequently visited cells
-            if np.random.randint(1,100)/100 < e_greedy:
+            if np.random.randint(1,100)/100 < e_greedy*(EPISODES / (EPISODES + global_disc_map[np.argmax(drone_loc)])):
                 action_idx = np.random.randint(0, action_size)
             else:
                 action_idx = PG.choose_action(state)
 
             # 3. Take action in the environment
-            reward = move_and_get_reward(drone, action_idx, disc_map)
+            reward, found = move_and_get_reward(drone, action_idx, disc_map, itr)
+            rewards += reward
 
             # 4. Store transition for training
             PG.store_transition(state, action_idx, reward)
+            
 
             # 5. Check to see if target has been found
-            if reward >= 1:
+            if found == True:
                 disc_map += grid.get_drones_vector()
                 target_found+=1
                 was_target_found = True
                 break
 
-
+        #print(grid)
+        reward_list_train[episode%4].append(rewards)
 
         global_disc_map += disc_map
         #print("\n-------TRAINING------\n")
@@ -124,6 +136,7 @@ if __name__ == "__main__":
 
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
         grid.set_obstacles(0) #No obstacles to start
+        
         drone = Drone(grid, position=Point(0,0), id=99)
         grid.set_target()
         rewards = 0
@@ -142,16 +155,29 @@ if __name__ == "__main__":
             action_idx = PG.choose_action(state)
 
             # 3. Take action in the environment
-            reward = move_and_get_reward(drone, action_idx, disc_map)
+            reward, found = move_and_get_reward(drone, action_idx, disc_map, itr)
             rewards += reward
 
-            PG.store_transition(state, action_idx, reward)
-
             # 5. Check to see if target has been found
-            if reward >= 1:
+            if found:
                 break
 
-        reward_list.append(rewards)
+        reward_list[episode%4].append(rewards)
+        
+        
+        drone_loc1 = np.zeros(grid_flat)
+        drone_loc1[0] = 1
+        state1 = np.append(drone_loc1, disc_map)
+        
+        action_values = PG.get_policy(state1)[0]
+        
+        action_values_tl[0].append(action_values[0])
+        action_values_tl[1].append(action_values[1])
+        action_values_tl[2].append(action_values[2])
+        action_values_tl[3].append(action_values[3])
+        
+        
+        
 
     print("\n-------TRAINING------\n")
     print("Target Found in: ",int(100*target_found/EPISODES),'%  of Episodes')
@@ -164,12 +190,34 @@ if __name__ == "__main__":
 
     print("Exploitation discovery map:\n", disc_map.reshape(gridsize[0], gridsize[1]))
     print('\n',grid)
+    
+    plt.plot(action_values_tl[0], label="up")
+    plt.plot(action_values_tl[1], label="right")
+    plt.plot(action_values_tl[2], label="down")
+    plt.plot(action_values_tl[3], label="left")
+    plt.legend()
+    plt.show()
+    
+    
+    plt.plot(reward_list_train[0], label="top left")
+    plt.plot(reward_list_train[1], label="bottom left")
+    plt.plot(reward_list_train[2], label="bottom right")
+    plt.plot(reward_list_train[3], label="top right")
+    plt.legend()
+    plt.title('Drone Search TRAIN')
+    plt.xlabel('Episodes')
+    plt.ylabel('Cost')
+    plt.rcParams["figure.figsize"]=(10,5)
+    plt.show()
 
-    #PG.print_value_estimation()
 
-    #plt.plot(reward_list)
-    #plt.title('Drone Search')
-    #plt.xlabel('Episodes')
-    #plt.ylabel('Cost')
-    #plt.rcParams["figure.figsize"]=(10,5)
-    #plt.show()
+    plt.plot(reward_list[0], label="top left")
+    plt.plot(reward_list[1], label="bottom left")
+    plt.plot(reward_list[2], label="bottom right")
+    plt.plot(reward_list[3], label="top right")
+    plt.legend()
+    plt.title('Drone Search')
+    plt.xlabel('Episodes')
+    plt.ylabel('Cost')
+    plt.rcParams["figure.figsize"]=(10,5)
+    plt.show()
