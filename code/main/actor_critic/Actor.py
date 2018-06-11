@@ -12,10 +12,12 @@ class PolicyGradient:
                  input_size,
                  output_size,
                  learning_rate,
+                 grid_size_flat,
                  value_decay,
                  regul_factor):
         self.n_x = input_size
         self.n_y = output_size
+        self.grid_size = grid_size_flat
         self.lr = learning_rate
         self.discount_factor = value_decay
         self.regul_factor = regul_factor
@@ -158,8 +160,8 @@ class PolicyGradient:
                                                 name="actions_taken")
         """Variables"""
         inputs = self.n_x
-        nodes_l1 = int(self.n_x)
-        nodes_l2 = int(self.n_x/2)
+        nodes_l1 = int(self.grid_size*2)
+        nodes_l2 = int(self.grid_size)
         outputs = self.n_y
         
         

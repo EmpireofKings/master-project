@@ -1,0 +1,9 @@
+--- HYPERPARAMETERS ---
+ e_greedy:       0.8
+ max_iterations: 25
+ val_decay:      0.9
+ l_rate:         0.0001
+ reg_factor:     0.1
+ Episodes:       10000
+ Grid seed:      4
+ Num Obstacles:  10
