@@ -12,39 +12,44 @@ import timeit
 """Hyperparameters"""
 np.random.seed(1)
 
-gridsize = [5, 10]
+gridsize = [10, 10]
 grid_flat = gridsize[0] * gridsize[1]
 
 # 1 for drone location, 1 for map of visited locations
 num_channels = 2
-input_size = grid_flat * num_channels+4
+input_size = grid_flat * num_channels+4 # +4 for observed surroundings
 
 action_size = 4 #number of actions to choose from
-train_grid_seeds = [2,3,4,6,15,18,24,26,32,38,44,48,64,67,72,76,91,94,96,97,99]
-test_grid_seeds = [0,13,31,55,87]
+"""Seeds for Grids 5,10:"""
+#train_grid_seeds = [2,3,4,6,15,18,24,26,32,38,44,48,64,67,72,76,91,94,96,97,99]
+#test_grid_seeds = [0,13,31,55,87]
 
-num_seeds = len(train_grid_seeds)+len(test_grid_seeds)
+"""Seeds for Grids 10x10"""
+train_grid_seeds = [4,6,8,13,18,27,28,30,34,36,37,38,42,44,53,54,60,62,64,69,72,73,82,88,91,94,95,99]
+test_grid_seeds = [2,15,32,41,57,70,89]
+
+num_seeds = len(train_grid_seeds)#+len(test_grid_seeds)
 num_obs = int(0.2*grid_flat) #Number of obstacles to generate the grid with
 
 e_greedy = 0.8
-max_iterations = int(grid_flat/2)
+max_iterations = int(grid_flat)
 val_decay = 0.9
-l_rate = 0.0001
+l_rate = 0.00005
 reg_factor = 0.1
-EPISODES = 15000 #must be a multiple of the number of starting locations (4)
+EPISODES = 10000 #must be a multiple of the number of starting locations (4)
 
-print('--- HYPERPARAMETERS ---')
-print(' e_greedy:       ',e_greedy)
-print(' max_iterations: ',max_iterations)
-print(' val_decay:      ',val_decay)
-print(' l_rate:         ',l_rate)
-print(' reg_factor:     ',reg_factor)
-print(' Episodes:       ',EPISODES)
-print(' Test Grid seeds:',test_grid_seeds)
+print('---- HYPERPARAMETERS ----')
+print(' e_greedy:        ',e_greedy)
+print(' max_iterations:  ',max_iterations)
+print(' val_decay:       ',val_decay)
+print(' l_rate:          ',l_rate)
+print(' reg_factor:      ',reg_factor)
+print(' Episodes:        ',EPISODES)
+print(' Test Grid seeds: ',test_grid_seeds)
 print(' Train Grid seeds:',train_grid_seeds)
-print(' Num Obstacles:  ',num_obs)
+print(' Num Obstacles:   ',num_obs)
 
-num_exec= 1
+num_exec= 10
 
 
 
@@ -80,6 +85,54 @@ def surrounding(observation):
         else:
             seen_obstacles.append(0)
     return seen_obstacles
+
+
+
+
+
+
+def EvaluateNetwork(PG,grid_seed,max_iterations,start_loc):
+    grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
+    grid.set_obstacles(num_obs) 
+    drone = Drone(grid, position=Point(start_loc[1],start_loc[0]), id=99)
+    grid.set_target()
+    
+    disc_map = np.zeros(grid_flat)
+    drone_loc = grid.get_drones_vector()
+    disc_map = disc_map + drone_loc
+    state = get_state(drone,disc_map)
+    target_found = False
+    
+    drone_map = []
+    drone_map.append(str(grid._grid))
+    
+    # Run simulator
+    for itr in range(max_iterations):
+        # Choose an action based on observation
+        
+        action_idx = PG.choose_action(state)
+
+        # Take action in the environment
+        reward,target_found = move_and_get_reward(drone, action_idx, disc_map,itr)
+        
+        drone_loc = grid.get_drones_vector()
+        disc_map = disc_map + drone_loc
+        
+        state = get_state(drone,disc_map)
+        
+        drone_map.append(str(grid._grid))
+        
+        # End Episode if target has been found
+        if target_found:    
+            break
+    
+    return drone_map
+
+
+
+
+
+
 
 def test_simulator(PG,max_iterations,start_loc):
     #Reset Grid and variables
@@ -210,7 +263,7 @@ if __name__ == "__main__":
     start = timeit.default_timer()
     
     for i in range(0,num_exec):
-
+        run_start = timeit.default_timer()
         action_values_init = []
         action_values_targ = []
         
@@ -227,6 +280,8 @@ if __name__ == "__main__":
         global_disc_map = np.zeros(grid_flat)
         
         PG_old = PG #change to copy not ref
+        
+        episode_start = timeit.default_timer()
         
         for episode in range(EPISODES):
             grid_seed = episode%num_seeds
@@ -310,7 +365,8 @@ if __name__ == "__main__":
             global_disc_map += disc_map
             
             if episode%100==0:
-                print('Episode ',episode,' completed')
+                print('Episode ',episode,' completed.  Run time: ',timeit.default_timer()-episode_start)
+                episode_start = timeit.default_timer()
             
             """Enable the following to have episodic updates"""
 #            PG_old = PG # change ref to copy
@@ -355,6 +411,8 @@ if __name__ == "__main__":
             
         
 
+        print('Run Execution Training time: ',timeit.default_timer() - run_start)
+
         action_values_init = np.array(action_values_init).reshape(-1,4)
         plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
         plt.plot(action_values_init[:,0],label="Up")
@@ -381,7 +439,7 @@ if __name__ == "__main__":
         plt.ylabel('Values')
         plt.rcParams["figure.figsize"]=(10,5)
         plt.show()
-            
+        
     # EXPLORATION
     print("\n-------TRAINING------\n")
     print("Target Found in: {0:.1%}  of Train Episodes".format(targets_found_train/EPISODES))
@@ -403,16 +461,16 @@ if __name__ == "__main__":
     
     """Test Reward Plot"""
     
-    reward_list0 = run_format(reward_list0)
-    reward_list1 = run_format(reward_list1)
-    reward_list2 = run_format(reward_list2)
-    reward_list3 = run_format(reward_list3)
+    reward_list0b = run_format(reward_list0)
+    reward_list1b = run_format(reward_list1)
+    reward_list2b = run_format(reward_list2)
+    reward_list3b = run_format(reward_list3)
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
-    plt.plot(reward_list0,label = 'Starting Point(0,0)')
-    plt.plot(reward_list1,label = 'Starting Point(4,0)')
-    plt.plot(reward_list2,label = 'Starting Point(0,9)')
-    plt.plot(reward_list3,label = 'Starting Point(4,9)')
+    plt.plot(reward_list0b,label = 'Starting Point(0,0)')
+    plt.plot(reward_list1b,label = 'Starting Point(9,0)')
+    plt.plot(reward_list2b,label = 'Starting Point(0,9)')
+    plt.plot(reward_list3b,label = 'Starting Point(9,9)')
     
     plt.legend()
     plt.title('Test Reward Sum')
@@ -422,17 +480,17 @@ if __name__ == "__main__":
     
     """Test Reward per iteration Plot"""
     
-    rewards_itr_test0 = run_format(rewards_itr_test0)
-    rewards_itr_test1 = run_format(rewards_itr_test1)
-    rewards_itr_test2 = run_format(rewards_itr_test2)
-    rewards_itr_test3 = run_format(rewards_itr_test3)
+    rewards_itr_test0b = run_format(rewards_itr_test0)
+    rewards_itr_test1b = run_format(rewards_itr_test1)
+    rewards_itr_test2b = run_format(rewards_itr_test2)
+    rewards_itr_test3b = run_format(rewards_itr_test3)
      
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
-    plt.plot(rewards_itr_test0,label = 'Starting Point(0,0)')
-    plt.plot(rewards_itr_test1,label = 'Starting Point(4,0)')
-    plt.plot(rewards_itr_test2,label = 'Starting Point(0,9)')
-    plt.plot(rewards_itr_test3,label = 'Starting Point(4,9)')
+    plt.plot(rewards_itr_test0b,label = 'Starting Point(0,0)')
+    plt.plot(rewards_itr_test1b,label = 'Starting Point(9,0)')
+    plt.plot(rewards_itr_test2b,label = 'Starting Point(0,9)')
+    plt.plot(rewards_itr_test3b,label = 'Starting Point(9,9)')
     plt.title('Moving Average Test Reward Normalized by Iteration per Episode')
     plt.legend()
     plt.show()
@@ -442,18 +500,18 @@ if __name__ == "__main__":
     
     """Test Reward Plot"""
    
-    losses_train = run_format(losses_train)
-    losses_test0 = run_format(losses_test0)
-    losses_test1 = run_format(losses_test1)
-    losses_test2 = run_format(losses_test2)
-    losses_test3 = run_format(losses_test3)
+    losses_trainb = run_format(losses_train)
+    losses_test0b = run_format(losses_test0)
+    losses_test1b = run_format(losses_test1)
+    losses_test2b = run_format(losses_test2)
+    losses_test3b = run_format(losses_test3)
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
-    plt.plot(losses_train,label = 'Train')
-    plt.plot(losses_test0,label = 'Test Starting Point(0,0)')
-    plt.plot(losses_test1,label = 'Test Starting Point(4,0)')
-    plt.plot(losses_test2,label = 'Test Starting Point(0,9)')
-    plt.plot(losses_test3,label = 'Test Starting Point(4,9)')
+    plt.plot(losses_trainb,label = 'Train')
+    plt.plot(losses_test0b,label = 'Test Starting Point(0,0)')
+    plt.plot(losses_test1b,label = 'Test Starting Point(9,0)')
+    plt.plot(losses_test2b,label = 'Test Starting Point(0,9)')
+    plt.plot(losses_test3b,label = 'Test Starting Point(9,9)')
     plt.legend()
     plt.title('Moving Average Drone Search Losses')
     plt.xlabel('Episodes')
@@ -465,19 +523,19 @@ if __name__ == "__main__":
     """Iterations per Episode plot"""
     #Every starting location will provide a different normal number of iterations, this will sum across all starting locations for the train.  The Test will still be separated.  
 
-    iter_ep_train = run_format(iter_ep_train)
-    iter_ep_test0 = run_format(iter_ep_test0)
-    iter_ep_test1 = run_format(iter_ep_test1)
-    iter_ep_test2 = run_format(iter_ep_test2)
-    iter_ep_test3 = run_format(iter_ep_test3)
+    iter_ep_trainb = run_format(iter_ep_train)
+    iter_ep_test0b = run_format(iter_ep_test0)
+    iter_ep_test1b = run_format(iter_ep_test1)
+    iter_ep_test2b = run_format(iter_ep_test2)
+    iter_ep_test3b = run_format(iter_ep_test3)
     
     
     plt.rcParams["figure.figsize"]=(fig_size[0],fig_size[1])
-    plt.plot(iter_ep_train,label = 'Train')
-    plt.plot(iter_ep_test0,label = 'Test Starting Point(0,0)')
-    plt.plot(iter_ep_test1,label = 'Test Starting Point(4,0)')
-    plt.plot(iter_ep_test2,label = 'Test Starting Point(0,9)')
-    plt.plot(iter_ep_test3,label = 'Test Starting Point(4,9)')
+    plt.plot(iter_ep_trainb,label = 'Train')
+    plt.plot(iter_ep_test0b,label = 'Test Starting Point(0,0)')
+    plt.plot(iter_ep_test1b,label = 'Test Starting Point(4,0)')
+    plt.plot(iter_ep_test2b,label = 'Test Starting Point(0,9)')
+    plt.plot(iter_ep_test3b,label = 'Test Starting Point(4,9)')
     plt.legend()
     plt.title('Moving Average Iterations in Episodes')
     plt.xlabel('Episodes')
@@ -492,6 +550,9 @@ if save_data:
     run_folder = os.path.join(save_path, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
     os.makedirs(run_folder)
     
+    
+
+
     
     """Hyperparameters"""
     hyperp = []
@@ -511,10 +572,51 @@ if save_data:
     file = open(save_file,"w")
     for item in hyperp:
         file.write("%s\n" % item)
-#    file.write(input(hyperp))
     file.close()
-#    np.savetxt(save_file,np.array(hyperp))
+
+
+
+
+    """Drone Paths"""
+    drone_map0 = EvaluateNetwork(PG,test_grid_seeds[0],max_iterations,[0,0])
+    drone_map1 = EvaluateNetwork(PG,test_grid_seeds[0],max_iterations,[gridsize[0]-1,0])
+    drone_map2 = EvaluateNetwork(PG,test_grid_seeds[0],max_iterations,[0,gridsize[1]-1])
+    drone_map3 = EvaluateNetwork(PG,test_grid_seeds[0],max_iterations,[gridsize[0]-1,gridsize[1]-1])
     
+    drone_paths_dir = os.path.join(run_folder,"Drone_Paths")
+    os.makedirs(drone_paths_dir)
+    
+    file_name = 'drone_map0'
+    save_file = os.path.join(drone_paths_dir,file_name+".txt")
+    file = open(save_file,"w")
+    for item in drone_map0:
+        file.write("%s\n" % item)
+    file.close()
+    
+    file_name = 'drone_map1'
+    save_file = os.path.join(drone_paths_dir,file_name+".txt")
+    file = open(save_file,"w")
+    for item in drone_map1:
+        file.write("%s\n" % item)
+    file.close()
+    
+    file_name = 'drone_map2'
+    save_file = os.path.join(drone_paths_dir,file_name+".txt")
+    file = open(save_file,"w")
+    for item in drone_map2:
+        file.write("%s\n" % item)
+    file.close()
+    
+    file_name = 'drone_map3'
+    save_file = os.path.join(drone_paths_dir,file_name+".txt")
+    file = open(save_file,"w")
+    for item in drone_map3:
+        file.write("%s\n" % item)
+    file.close()
+    
+
+
+
     
     """Reward Lists"""
     rewards_dir = os.path.join(run_folder,"Rewards")

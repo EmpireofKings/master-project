@@ -1,0 +1,10 @@
+---- HYPERPARAMETERS ----
+ e_greedy:         0.8
+ max_iterations:   100
+ val_decay:        0.9
+ l_rate:           0.0001
+ reg_factor:       0.1
+ Episodes:         50
+ Train Grid seeds: [4, 6, 8, 13, 18, 27, 28, 30, 34, 36, 37, 38, 42, 44, 53, 54, 60, 62, 64, 69, 72, 73, 82, 88, 91, 94, 95, 99]
+ Test Grid seeds:  [2, 15, 32, 41, 57, 70, 89]
+ Num Obstacles:    20

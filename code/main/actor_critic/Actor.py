@@ -199,8 +199,10 @@ class PolicyGradient:
                                           dtype=tf.float32),
                                   name = "layer_3")
 
+
 #        self.network = layer_3(layer_1(self.X))
         self.network = layer_3(layer_2(layer_1(self.X)))
+
         
 #        
 #        
@@ -255,7 +257,7 @@ class PolicyGradient:
         rew_1_act = tf.multiply(self.actions_taken, self.rewards)
         entropy_1_act = tf.multiply(self.actions_taken, entropy)
         
-        self.loss = tf.reduce_sum(tf.square(rew_1_act + val_1_act - y_hat_1_act)) + entropy_1_act
+        self.loss = tf.reduce_sum(tf.square(rew_1_act + val_1_act - y_hat_1_act)) + entropy_1_act #regular entropy not one hot encoded?
         
         with tf.name_scope('train'):
             self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
