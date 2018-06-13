@@ -21,106 +21,136 @@ class ActorCritic:
         self.lr = learning_rate 
         self.discount_factor = reward_decay
 
-        self.entropy_factor = 0.01
+        self.entropy_factor = 0.8
 
         self.episode_states = np.empty((0,input_size), np.float32)
         self.episode_actions = []
         self.episode_rewards = []
-
-        self.sess = tf.Session()
-
+        
+        
         modifier = datetime.now().strftime("%m%d-%H%M%S") + " lnr=,disc=%s" % (self.discount_factor)
         log_path = "_logs_/" + modifier
 
         # $ tensorboard --logdir=_logs_
         self.writer = tf.summary.FileWriter(log_path)
-
-        self.build_network()
-
-        self.writer.add_graph(self.sess.graph)
+        
         self.iterations = 0
         
+        self.build_network()
+        
+        self.sess = tf.Session()
+        
         #print([x.name for x in tf.global_variables()])
+        self.sess.run(tf.global_variables_initializer())
 
 
     def build_network(self):
     
-        
-        self.X = tf.placeholder(tf.float32, shape=[None, self.n_x], name="X")
-        self.R = tf.placeholder(tf.float32, shape=[None, 1], name="discounted_rewards")
-        self.A = tf.placeholder(tf.float32, shape=[None, 4], name="actions")
+        self.X   = tf.placeholder(tf.float32, shape=[None, self.n_x], name="X")
+        self.R   = tf.placeholder(tf.float32, shape=[None, 1], name="discounted_rewards")
+        self.A   = tf.placeholder(tf.int32, shape=[None], name="actions")
+        self.AVG = tf.placeholder(tf.float32, shape=[None, 1], name="advantages")
 
         #with tf.variable_scope("policy_network", reuse=tf.AUTO_REUSE):#
         with tf.name_scope("policy_network"):
-            self.policy_network = tf.nn.softmax(self.policy_nn())
+            policy_nn_raw = self.policy_nn()
+            self.policy_network = tf.nn.softmax(policy_nn_raw)
+            
+        print("Shape policy", self.policy_network)
 
         #with tf.variable_scope("critic_network", reuse=tf.AUTO_REUSE):
         with tf.name_scope("critic_network"):
             self.critic_network = self.critic_nn()
+            
 
         with tf.name_scope("entropy"):
-            entropy = tf.reduce_sum(self.policy_network * tf.log(self.policy_network))
+            entropy = -tf.reduce_sum(policy_nn_raw * tf.log(policy_nn_raw))
 
         
         with tf.name_scope("policy_loss"):
             # Touch only the action we took
-            policy = tf.log(tf.reduce_sum(tf.multiply(self.policy_network, self.A)))
+            action_mask_one_hot = tf.one_hot(self.A,    # column index
+                                             self.policy_network.shape[1],
+                                             on_value = True,
+                                             off_value = False,
+                                             dtype = tf.bool)
+                                             
+            policy = tf.boolean_mask(self.policy_network, action_mask_one_hot)
+            
+            #policy = tf.log(policy)
+            
             # policy * advantage + entropy
-            self.policy_loss = tf.reduce_mean(policy*(self.R - self.critic_network))
+            self.policy_loss = tf.reduce_mean(policy*self.AVG)
 
-            tf.summary.scalar("policy_loss", tf.reduce_sum(self.policy_loss))
 
         with tf.name_scope("critic_loss"):
             # advantage squared
             self.critic_loss = tf.reduce_mean(tf.square(self.R - self.critic_network))
 
-            tf.summary.scalar("critic_loss", tf.reduce_sum(self.critic_loss))
-
-
-        self.loss = 0.5*self.critic_loss + self.policy_loss - self.entropy_factor * entropy
             
-        #self.trainer = tf.train.GradientDescentOptimizer(self.lr)
+
+
+        self.loss = -entropy#0.25*self.critic_loss + self.policy_loss - self.entropy_factor * entropy
+            
+        trainer = tf.train.GradientDescentOptimizer(self.lr)
+        #trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr, decay=0.99, epsilon=1e-5)
+        #trainer = tf.train.AdamOptimizer(self.lr)
+        
         #self.train_ops = (self.trainer.minimize(self.policy_loss),
         #                  self.trainer.minimize(self.critic_loss))
         
-        #self.train_ops = self.trainer.minimize(self.loss)
+        self.train_ops = trainer.minimize(self.loss)
         
         #https://github.com/openai/baselines/blob/master/baselines/a2c/a2c.py
         
-        variables = tf.trainable_variables()
-        print(variables)
-        grads = tf.gradients(self.loss, variables)
+        #variables = tf.trainable_variables()
+        #print(variables)
+        #grads = tf.gradients(self.loss, variables)
         
-        max_grad_norm = 0.5
-        if max_grad_norm is not None:
-            grads, grad_norm = tf.clip_by_global_norm(grads, max_grad_norm)
+        #max_grad_norm = 20
+        #if max_grad_norm is not None:
+        #    grads, grad_norm = tf.clip_by_global_norm(grads, max_grad_norm)
         
-        grads = list(zip(grads, variables))
+        #grads = list(zip(grads, variables))
         
         
-        trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr, decay=0.99, epsilon=1e-5)
         
-        self.train_ops = trainer.apply_gradients(grads)
+        
+        #self.train_ops = trainer.apply_gradients(grads)
 
-        self.sess.run(tf.global_variables_initializer())
+        
 
 
-    def learn(self, last_state, was_target_found):
+    def learn(self, was_target_found):
 
         # Final reference reward
         if was_target_found:
             discounted_reward = 0
         else:
-            discounted_reward = self.get_critic(last_state)
+            last_state = self.episode_states[-1]
+            discounted_reward = self.get_critic(last_state.reshape(1, -1))
 
         #print("discounted_reward", discounted_reward)
         #print("len episode rewards", len(self.episode_rewards))
+        
+        episode_count = len(self.episode_rewards)
 
         discounted_rewards = []
-        for i in reversed(range(len(self.episode_rewards))):
+        for i in reversed(range(episode_count-1)):
             discounted_reward = self.episode_rewards[i] + self.discount_factor * discounted_reward
             discounted_rewards.append(discounted_reward)
         discounted_rewards = np.array(list(reversed(discounted_rewards))).ravel().reshape(-1, 1)
+        
+        values = self.get_critic(self.episode_states[0:-1])
+        
+        
+        advantages = np.array(self.episode_rewards[:-1]).reshape(-1, 1)#discounted_rewards - values
+        
+        #if self.iterations %  4 == 0:
+            #print(np.hstack((values, discounted_rewards)))
+            #print("---", sum(np.abs(advantages)), "---")
+            #input("Press Enter to continue...")
+        
 
         #print("---------------------------")
         #print(self.episode_states)
@@ -128,12 +158,13 @@ class ActorCritic:
         #print(self.episode_rewards)
         #print(discounted_rewards)
         #print("---------------------------")
-        #input("Press Enter to continue...")
         
         
-        feed_dict = {self.X: self.episode_states,
-                     self.A: self.episode_actions,
-                     self.R: discounted_rewards}
+        
+        feed_dict = {self.X: self.episode_states[:-1],
+                     self.A: self.episode_actions[:-1],
+                     self.R: discounted_rewards,
+                     self.AVG: advantages}
 
 
         # TODO ?
@@ -143,6 +174,7 @@ class ActorCritic:
 
         #action_gradients = tf.gradients(self.policy_loss, var_policy)
         #value_gradients = tf.gradients(self.critic_loss, var_critic)
+        
         
         self.sess.run(self.train_ops, feed_dict=feed_dict)
 
@@ -197,10 +229,10 @@ class ActorCritic:
         biases = tf.get_variable("biases", kernel_shape[1], initializer=tf.constant_initializer(-0.1))
         raw_dense = tf.matmul(input, kernel) + biases
 
-        if not tf.is_variable_initialized(kernel).eval(session=self.sess):
-            self.sess.run(tf.variables_initializer([kernel]))
-        if not tf.is_variable_initialized(biases).eval(session=self.sess):
-            self.sess.run(tf.variables_initializer([biases]))
+        #if not tf.is_variable_initialized(kernel).eval(session=self.sess):
+        #    self.sess.run(tf.variables_initializer([kernel]))
+        #if not tf.is_variable_initialized(biases).eval(session=self.sess):
+        #    self.sess.run(tf.variables_initializer([biases]))
 
         tf.summary.histogram("weights", kernel)
         tf.summary.histogram("biases", biases)
@@ -238,7 +270,11 @@ class ActorCritic:
 
 
     def get_policy(self, input):
-        return self.sess.run(self.policy_network, feed_dict={self.X: input.reshape(1, -1)})
+        policies = self.sess.run(self.policy_network, feed_dict={self.X: input.reshape(1, -1)})
+        if np.isnan(policies).any():
+            raise ValueError("NaN occured in policy network")
+        return policies
+        
 
 
     def critic_nn(self):
@@ -257,7 +293,10 @@ class ActorCritic:
 
 
     def get_critic(self, input):
-        return self.sess.run(self.critic_network, feed_dict={self.X: input.reshape(1, -1)})
+        critic_value = self.sess.run(self.critic_network, feed_dict={self.X: input})
+        if np.isnan(critic_value).any():
+            raise ValueError("NaN occured in policy network")
+        return critic_value
 
 
     def store_transition(self, s, a, r):
@@ -273,9 +312,11 @@ class ActorCritic:
         self.episode_rewards.append(r)
 
         # Store actions as list of arrays, hot-one encoding at each transition
-        action = np.zeros(self.n_y, dtype=np.float32)
-        action[a] = 1
-        self.episode_actions.append(action)
+        #action = np.zeros(self.n_y, dtype=np.float32)
+        #action[a] = 1
+        #self.episode_actions.append(action)
+        self.episode_actions.append(a)
+        
 
 
     def choose_action(self, observation):

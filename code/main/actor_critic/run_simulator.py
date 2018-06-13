@@ -9,9 +9,9 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 5000
+EPISODES = 500
 rewards = []
-learning_rate = 1e-4
+learning_rate = 1e-7
 
 gridsize = [5, 10]
 grid_flat = gridsize[0] * gridsize[1]
@@ -20,7 +20,7 @@ num_channels = 2
 input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
-e_greedy = 0.8
+e_greedy = 0.5
 grid_seed = 1
 max_iterations = int(grid_flat/2) #it will take this many actions to go to half of the cells in the grid
 
@@ -33,20 +33,21 @@ def move_and_get_reward(drone, action_idx, disc_map, itr):
         drone.move(Direction(action_idx))
         if "T" in drone.observe_surrounding():
             # arbitrary reward for finding target
-            return 1 - movement_cost, True
+            #return 1 - movement_cost, True
+            return 1, True
         else:
             # if a drone has been to a location multiple times,
             # the penalty will increase linearly with each visit
             location_point = drone.get_position()
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
     
-            return -disc_map[location] / max_iterations * 5, False
+            return 0, False#-disc_map[location] / (max_iterations * 10), False
             #return 0.1
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
         location_point = drone.get_position()
         location = location_point.get_y() * gridsize[1] + location_point.get_x()
-        return -disc_map[location] / max_iterations * 5 - 0.4, False # arbitrary
+        return -1 / max_iterations, False # disc_map[location] / (max_iterations * 5) - 0.4, False # arbitrary 
 
 
 
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     for episode in range(EPISODES):
         print("Episode", episode, end="\r")
         
-        position = positions[episode % 4]
+        position = positions[0]#[episode % 4]
 
         # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
@@ -89,13 +90,13 @@ if __name__ == "__main__":
             drone_loc = grid.get_drones_vector()
 
             # Use smaller state space for the beginning
-            disc_map += drone_loc
+            #disc_map += drone_loc
             state = np.append(drone_loc, disc_map)
             
 
             # 2. Choose an action based on observation
             # TODO: Decrease e-greedy for frequently visited cells
-            if np.random.randint(1,100)/100 < e_greedy*(EPISODES / (EPISODES + global_disc_map[np.argmax(drone_loc)])):
+            if np.random.randint(1,100)/100 < e_greedy:#*(EPISODES / (EPISODES + global_disc_map[np.argmax(drone_loc)])):
                 action_idx = np.random.randint(0, action_size)
             else:
                 action_idx = PG.choose_action(state)
@@ -122,11 +123,11 @@ if __name__ == "__main__":
         #print("\n-------TRAINING------\n")
 
         # Get last state for learning
-        disc_map += grid.get_drones_vector()
+        #disc_map += grid.get_drones_vector()
         last_state = np.append(grid.get_drones_vector(), disc_map)
 
         # 5. Train neural network
-        PG.learn(last_state, was_target_found)
+        PG.learn(was_target_found)
 
 #        reward_list.append(np.sum(PG.episode_rewards))
 
@@ -137,7 +138,7 @@ if __name__ == "__main__":
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
         grid.set_obstacles(0) #No obstacles to start
         
-        drone = Drone(grid, position=Point(0,0), id=99)
+        drone = Drone(grid, position=position, id=99)
         grid.set_target()
         rewards = 0
         disc_map = np.zeros(grid_flat)
@@ -148,7 +149,7 @@ if __name__ == "__main__":
             drone_loc = grid.get_drones_vector()
 
             # Use smaller state space for the beginning
-            disc_map = disc_map + drone_loc
+            #disc_map = disc_map + drone_loc
             state = np.append(drone_loc, disc_map)
 
             # 2. Choose an action based on observation
@@ -167,7 +168,7 @@ if __name__ == "__main__":
         
         drone_loc1 = np.zeros(grid_flat)
         drone_loc1[0] = 1
-        state1 = np.append(drone_loc1, disc_map)
+        state1 = np.append(drone_loc1, np.zeros(grid_flat))
         
         action_values = PG.get_policy(state1)[0]
         
@@ -212,9 +213,9 @@ if __name__ == "__main__":
 
 
     plt.plot(reward_list[0], label="top left")
-    plt.plot(reward_list[1], label="bottom left")
-    plt.plot(reward_list[2], label="bottom right")
-    plt.plot(reward_list[3], label="top right")
+    #plt.plot(reward_list[1], label="bottom left")
+    #plt.plot(reward_list[2], label="bottom right")
+    #plt.plot(reward_list[3], label="top right")
     plt.legend()
     plt.title('Drone Search')
     plt.xlabel('Episodes')
