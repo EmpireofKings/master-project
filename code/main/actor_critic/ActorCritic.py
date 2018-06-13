@@ -3,6 +3,8 @@ Policy Gradient Reinforcement Learning
 Uses a 3 layer neural network as the policy network
 
 """
+import pandas as pd
+
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -64,7 +66,8 @@ class ActorCritic:
             
 
         with tf.name_scope("entropy"):
-            entropy = -tf.reduce_sum(policy_nn_raw * tf.log(policy_nn_raw))
+            # We wanna maximize the entropy (then all outputs are even)
+            entropy = -tf.reduce_sum(self.policy_network * tf.log(self.policy_network))
 
         
         with tf.name_scope("policy_loss"):
@@ -74,23 +77,22 @@ class ActorCritic:
                                              on_value = True,
                                              off_value = False,
                                              dtype = tf.bool)
-                                             
-            policy = tf.boolean_mask(self.policy_network, action_mask_one_hot)
             
-            #policy = tf.log(policy)
+            # log turns it into a negative pi
+            policy = tf.log(tf.boolean_mask(self.policy_network, action_mask_one_hot))
             
             # policy * advantage + entropy
-            self.policy_loss = tf.reduce_mean(policy*self.AVG)
+            self.policy_loss = tf.reduce_sum(tf.multiply(policy, self.AVG)) - 0.9*entropy
 
 
         with tf.name_scope("critic_loss"):
             # advantage squared
-            self.critic_loss = tf.reduce_mean(tf.square(self.R - self.critic_network))
+            self.critic_loss = tf.reduce_sum(tf.squared_difference(self.R, self.critic_network))
 
             
 
-
-        self.loss = -entropy#0.25*self.critic_loss + self.policy_loss - self.entropy_factor * entropy
+        # try one layer only
+        self.loss = 0.25*self.critic_loss + self.policy_loss
             
         trainer = tf.train.GradientDescentOptimizer(self.lr)
         #trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr, decay=0.99, epsilon=1e-5)
@@ -121,14 +123,13 @@ class ActorCritic:
         
 
 
-    def learn(self, was_target_found):
+    def learn(self, was_target_found, last_state):
 
         # Final reference reward
         if was_target_found:
             discounted_reward = 0
         else:
-            last_state = self.episode_states[-1]
-            discounted_reward = self.get_critic(last_state.reshape(1, -1))
+            discounted_reward = self.get_critic(last_state.reshape(1, -1))  # TODO last reward
 
         #print("discounted_reward", discounted_reward)
         #print("len episode rewards", len(self.episode_rewards))
@@ -136,33 +137,36 @@ class ActorCritic:
         episode_count = len(self.episode_rewards)
 
         discounted_rewards = []
-        for i in reversed(range(episode_count-1)):
+        for i in reversed(range(episode_count)):
             discounted_reward = self.episode_rewards[i] + self.discount_factor * discounted_reward
             discounted_rewards.append(discounted_reward)
         discounted_rewards = np.array(list(reversed(discounted_rewards))).ravel().reshape(-1, 1)
         
-        values = self.get_critic(self.episode_states[0:-1])
+        values = self.get_critic(self.episode_states)
         
         
-        advantages = np.array(self.episode_rewards[:-1]).reshape(-1, 1)#discounted_rewards - values
+        advantages = discounted_rewards - values # TODO increase value of critic with time
         
         #if self.iterations %  4 == 0:
             #print(np.hstack((values, discounted_rewards)))
             #print("---", sum(np.abs(advantages)), "---")
-            #input("Press Enter to continue...")
+            
         
 
         #print("---------------------------")
+        #actions = np.array(self.episode_actions).reshape(-1, 1)
+        #rewards = np.array(self.episode_rewards).reshape(-1, 1)
+        #log = pd.DataFrame(np.hstack((actions, rewards, discounted_rewards, values, advantages)))
+        #log.columns = ["action_idx", "rewards", "discounted reward", "values", "advantages"]
+        #print(log)
         #print(self.episode_states)
-        #print(self.episode_actions)
-        #print(self.episode_rewards)
-        #print(discounted_rewards)
         #print("---------------------------")
+        #input("Press Enter to continue...")
         
         
         
-        feed_dict = {self.X: self.episode_states[:-1],
-                     self.A: self.episode_actions[:-1],
+        feed_dict = {self.X: self.episode_states,
+                     self.A: self.episode_actions,
                      self.R: discounted_rewards,
                      self.AVG: advantages}
 
@@ -194,6 +198,8 @@ class ActorCritic:
         #self.writer.add_summary(s, self.iterations)
 
         self.iterations += 1
+        
+        return sum(advantages)[0]
 
     ### Network contruction functions ###
 
@@ -255,14 +261,14 @@ class ActorCritic:
 
 
     def policy_nn(self):
-        with tf.variable_scope("hidden1", reuse=tf.AUTO_REUSE):
-            in_hidden1 = self.n_x
-            out_hidden1 = 100
-            hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
+        #with tf.variable_scope("hidden1", reuse=tf.AUTO_REUSE):
+        #    in_hidden1 = self.n_x
+        #    out_hidden1 = 100
+        #    hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
         with tf.variable_scope("hidden2", reuse=tf.AUTO_REUSE):
             in_hidden2 = 100
             out_hidden2 = 50
-            hidden2 = self.dense(hidden1, [in_hidden2, out_hidden2])
+            hidden2 = self.dense(self.X, [in_hidden2, out_hidden2])
         with tf.variable_scope("action_raw"):
             out_policy = 4
             policy_raw = self.dense_output(hidden2, [out_hidden2, out_policy])
@@ -278,14 +284,14 @@ class ActorCritic:
 
 
     def critic_nn(self):
-        with tf.variable_scope("hidden1", reuse=tf.AUTO_REUSE):
-            in_hidden1 = self.n_x
-            out_hidden1 = 100
-            hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
+        #with tf.variable_scope("hidden1", reuse=tf.AUTO_REUSE):
+        #    in_hidden1 = self.n_x
+        #    out_hidden1 = 100
+        #    hidden1 = self.dense(self.X, [in_hidden1, out_hidden1])
         with tf.variable_scope("hidden2", reuse=tf.AUTO_REUSE):
             in_hidden2 = 100
             out_hidden2 = 50
-            hidden2 = self.dense(hidden1, [in_hidden2, out_hidden2])
+            hidden2 = self.dense(self.X, [in_hidden2, out_hidden2])
         with tf.variable_scope("critic_raw"):
             out_critic = 1
             critic_raw = self.dense_output(hidden2, [out_hidden2, out_critic])
