@@ -102,3 +102,6 @@ ENV/
 
 # tensorflow logs
 _logs_/
+
+# PyCharm Files
+.idea/
