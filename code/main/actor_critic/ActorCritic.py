@@ -82,7 +82,7 @@ class ActorCritic:
             policy = tf.log(tf.boolean_mask(self.policy_network, action_mask_one_hot))
             
             # policy * advantage + entropy
-            self.policy_loss = tf.reduce_sum(tf.multiply(policy, self.AVG)) - 0.9*entropy
+            self.policy_loss = tf.reduce_sum(tf.multiply(policy, self.AVG)) - 0.01*entropy
 
 
         with tf.name_scope("critic_loss"):
@@ -92,11 +92,11 @@ class ActorCritic:
             
 
         # try one layer only
-        self.loss = 0.25*self.critic_loss + self.policy_loss
+        self.loss = 0.1*self.critic_loss + self.policy_loss
             
-        trainer = tf.train.GradientDescentOptimizer(self.lr)
-        #trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr, decay=0.99, epsilon=1e-5)
-        #trainer = tf.train.AdamOptimizer(self.lr)
+        #trainer = tf.train.GradientDescentOptimizer(self.lr)
+        #trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
+        trainer = tf.train.AdamOptimizer(self.lr)
         
         #self.train_ops = (self.trainer.minimize(self.policy_loss),
         #                  self.trainer.minimize(self.critic_loss))

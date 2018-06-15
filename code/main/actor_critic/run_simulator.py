@@ -9,9 +9,9 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 3000
+EPISODES = 10000
 rewards = []
-learning_rate = 1e-3
+learning_rate = 1e-5
 
 gridsize = [5, 10]
 grid_flat = gridsize[0] * gridsize[1]
@@ -33,7 +33,7 @@ def move_and_get_reward(drone, action_idx, disc_map, itr):
         drone.move(Direction(action_idx))
         if "T" in drone.observe_surrounding():
             # arbitrary reward for finding target
-            return 1 - movement_cost, True
+            return 1, True  # - movement_cost
             #return 1, True
         else:
             # if a drone has been to a location multiple times,
@@ -42,12 +42,12 @@ def move_and_get_reward(drone, action_idx, disc_map, itr):
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
     
             return 0, False#-disc_map[location] / (max_iterations * 10), False
-            return -movement_cost
+            #return -movement_cost, False
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
         location_point = drone.get_position()
         location = location_point.get_y() * gridsize[1] + location_point.get_x()
-        return -1 / max_iterations, False # disc_map[location] / (max_iterations * 5) - 0.4, False # arbitrary 
+        return -1, True # disc_map[location] / (max_iterations * 5) - 0.4, False # arbitrary 
 
 
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             drone_loc = grid.get_drones_vector()
 
             # Use smaller state space for the beginning
-            #disc_map += drone_loc
+            disc_map += drone_loc
             state = np.append(drone_loc, disc_map)
             
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 action_idx = PG.choose_action(state)
 
             # 3. Take action in the environment
-            reward, found = move_and_get_reward(drone, action_idx, disc_map, itr)
+            reward, done = move_and_get_reward(drone, action_idx, disc_map, itr)
             rewards += reward
 
             # 4. Store transition for training
@@ -111,10 +111,11 @@ if __name__ == "__main__":
             
 
             # 5. Check to see if target has been found
-            if found == True:
-                disc_map += grid.get_drones_vector()
-                target_found+=1
+            if done == True:
+                #disc_map += grid.get_drones_vector()
                 was_target_found = True
+                if reward > 0:
+                    target_found+=1
                 break
 
         #print(grid)
@@ -124,7 +125,7 @@ if __name__ == "__main__":
         #print("\n-------TRAINING------\n")
 
         # Get last state for learning
-        #disc_map += grid.get_drones_vector()
+        disc_map += grid.get_drones_vector()
         last_state = np.append(grid.get_drones_vector(), disc_map)
 
         # 5. Train neural network
@@ -152,7 +153,7 @@ if __name__ == "__main__":
             drone_loc = grid.get_drones_vector()
 
             # Use smaller state space for the beginning
-            #disc_map = disc_map + drone_loc
+            disc_map = disc_map + drone_loc
             state = np.append(drone_loc, disc_map)
 
             # 2. Choose an action based on observation
