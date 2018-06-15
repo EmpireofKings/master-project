@@ -69,7 +69,7 @@ def move_and_get_reward(drone, action_idx, disc_map,itr):
         else:
             # if a drone has been to a location multiple times,
             # the penalty will increase linearly with each visit
-            return -bad_move-cost,False # min of 0.25
+            return -bad_move-cost,False # min of -0.25
 
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
