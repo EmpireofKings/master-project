@@ -9,20 +9,20 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 10000
+EPISODES = 25000
 rewards = []
 learning_rate = 1e-5
 
-gridsize = [5, 10]
+gridsize = [5, 8]
 grid_flat = gridsize[0] * gridsize[1]
 # 1 for drone location, 1 for map of visited locations
 num_channels = 2
 input_size = grid_flat * num_channels
 
 action_size = 4 #number of actions to choose from
-e_greedy = 0.0
+e_greedy = 0.8
 grid_seed = 1
-max_iterations = int(grid_flat/2) #it will take this many actions to go to half of the cells in the grid
+max_iterations = int(grid_flat) #it will take this many actions to go to half of the cells in the grid
 
 
 def move_and_get_reward(drone, action_idx, disc_map, itr):
@@ -33,7 +33,7 @@ def move_and_get_reward(drone, action_idx, disc_map, itr):
         drone.move(Direction(action_idx))
         if "T" in drone.observe_surrounding():
             # arbitrary reward for finding target
-            return 1, True  # - movement_cost
+            return 1 - movement_cost,True
             #return 1, True
         else:
             # if a drone has been to a location multiple times,
@@ -41,14 +41,14 @@ def move_and_get_reward(drone, action_idx, disc_map, itr):
             location_point = drone.get_position()
             location = location_point.get_y() * gridsize[1] + location_point.get_x()
     
-            return 0, False#-disc_map[location] / (max_iterations * 10), False
-            #return -movement_cost, False
+#            return 0.1,False#-disc_map[location] / (max_iterations * 10), False
+            return -disc_map[location] / (max_iterations * 5)-movement_cost, False
     except (PositioningError, IndexError):
         # We hit an obstacle or tried to exit the grid
         location_point = drone.get_position()
         location = location_point.get_y() * gridsize[1] + location_point.get_x()
-        return -1, True # disc_map[location] / (max_iterations * 5) - 0.4, False # arbitrary 
-
+        return -disc_map[location] / (max_iterations * 5)-movement_cost - 0.4, False # arbitrary 
+#        return 0,False
 
 
 if __name__ == "__main__":
@@ -64,13 +64,13 @@ if __name__ == "__main__":
     global_disc_map = np.zeros(grid_flat)
 
     
-    positions = [Point(0,0), Point(0,4), Point(9,4), Point(9,0)]
+    positions = [Point(0,0), Point(0,gridsize[0]-1), Point(gridsize[1]-1,gridsize[0]-1), Point(gridsize[1]-1,0)]
 
 
     for episode in range(EPISODES):
         print("Episode", episode, end="\r")
         
-        position = positions[0]#[episode % 4]
+        position = positions[episode % 4]
 
         # Setup simulator
         grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
@@ -83,10 +83,10 @@ if __name__ == "__main__":
         disc_map = np.zeros(grid_flat)
         was_target_found = False
         rewards = 0
-
+        count = 0
         # Generate traning data
         for itr in range(max_iterations):
-        
+            count+=1
             # 1. Get the current state
             drone_loc = grid.get_drones_vector()
 
@@ -129,9 +129,12 @@ if __name__ == "__main__":
         last_state = np.append(grid.get_drones_vector(), disc_map)
 
         # 5. Train neural network
+#        if itr==max_iterations-1:
+#            was_target_found=True
         avg_sum = PG.learn(was_target_found, last_state)
         
-        advantages.append(avg_sum)
+        
+        advantages.append(avg_sum/count)
 
 #        reward_list.append(np.sum(PG.episode_rewards))
 
@@ -196,29 +199,71 @@ if __name__ == "__main__":
     print("Exploitation discovery map:\n", disc_map.reshape(gridsize[0], gridsize[1]))
     print('\n',grid)
     
-    plt.plot(advantages)
+    plt.plot(np.convolve(advantages, np.ones((4,))/4, mode='valid'),)
+    plt.title('Advantages')
+    plt.legend()
     plt.show()
     
     plt.plot(action_values_tl[0], label="up")
     plt.plot(action_values_tl[1], label="right")
     plt.plot(action_values_tl[2], label="down")
     plt.plot(action_values_tl[3], label="left")
+    plt.title('Action Values')
     plt.legend()
     plt.show()
     
+#    np.convolve(x, np.ones((N,))/N, mode='valid')
     
-    plt.plot(reward_list_train[0], label="top left")
-    plt.plot(reward_list_train[1], label="bottom left")
-    plt.plot(reward_list_train[2], label="bottom right")
-    plt.plot(reward_list_train[3], label="top right")
+#    plt.plot(reward_list_train[0], label="top left")
+#    plt.plot(reward_list_train[1], label="bottom left")
+#    plt.plot(reward_list_train[2], label="bottom right")
+#    plt.plot(reward_list_train[3], label="top right")
+    N=10
+    plt.plot(np.convolve(reward_list[0], np.ones((N,))/N, mode='valid'), label="top left")
+    plt.plot(np.convolve(reward_list[1], np.ones((N,))/N, mode='valid'), label="bottom left")
+    plt.plot(np.convolve(reward_list[2], np.ones((N,))/N, mode='valid'), label="bottom right")
+    plt.plot(np.convolve(reward_list[3], np.ones((N,))/N, mode='valid'), label="top right")
+    
     plt.legend()
     plt.title('Drone Search TRAIN')
     plt.xlabel('Episodes')
     plt.ylabel('Cost')
     plt.rcParams["figure.figsize"]=(10,5)
+    plt.legend()
     plt.show()
-
-
+#        
+#    for i in range(len(positions)):
+#        print('\nStarting point'+str(positions[i]))
+#        grid = Grid(gridsize[0],gridsize[1], seed=grid_seed)
+#        grid.set_obstacles(0) #No obstacles to start
+#        
+#        drone = Drone(grid, position=positions[i], id=99)
+#        grid.set_target()
+#        rewards = 0
+#        disc_map = np.zeros(grid_flat)
+#    
+#        # Run simulator
+#        for itr in range(max_iterations):
+#            # 1. Get the current state
+#            drone_loc = grid.get_drones_vector()
+#    
+#            # Use smaller state space for the beginning
+#            disc_map = disc_map + drone_loc
+#            state = np.append(drone_loc, disc_map)
+#    
+#            # 2. Choose an action based on observation
+#            action_idx = PG.choose_action(state)
+#            print(grid._grid)
+#            # 3. Take action in the environment
+#            reward, found = move_and_get_reward(drone, action_idx, disc_map, itr)
+#            action_values = PG.get_policy(state)[0]
+#            rewards += reward
+#    
+#            # 5. Check to see if target has been found
+#            if found:
+#                break
+    
+    
     #plt.plot(reward_list[0], label="top left")
     #plt.plot(reward_list[1], label="bottom left")
     #plt.plot(reward_list[2], label="bottom right")
