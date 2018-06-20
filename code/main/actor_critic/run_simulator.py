@@ -9,9 +9,9 @@ from Simulator import *
 
 np.random.seed(1)
 
-EPISODES = 25000
+EPISODES = 8000
 rewards = []
-learning_rate = 1e-5
+learning_rate = 5e-4
 
 gridsize = [5, 8]
 grid_flat = gridsize[0] * gridsize[1]

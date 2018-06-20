@@ -95,7 +95,7 @@ class ActorCritic:
             
 
         # try one layer only
-        self.loss =  self.policy_loss + 0.5*self.critic_loss 
+        self.loss =  self.policy_loss + 0.1*self.critic_loss 
             
         #trainer = tf.train.GradientDescentOptimizer(self.lr)
 #        trainer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
