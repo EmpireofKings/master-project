@@ -9,7 +9,8 @@ import random
 sys.path.append(os.path.abspath("../../main/simulator"))
 from Simulator import *
 
-SEED = 1
+TARGET_SEED = 1
+OBSTACLES_SEED = 1
 
 
 class PointTestCase(unittest.TestCase):
@@ -30,7 +31,7 @@ class DroneTestCase(unittest.TestCase):
 
     def test_init_drone(self):
         #  Grid
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
@@ -44,7 +45,7 @@ class DroneTestCase(unittest.TestCase):
     
     def test_init_drone_fails_when_no_int_id(self):
         #  Grid
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
@@ -56,7 +57,7 @@ class DroneTestCase(unittest.TestCase):
             d1 = Drone(g1, init_pos, [1, 2])
         
     def test_init_drone_on_obsticle(self):
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         
         init_pos = Point(1,0) # Occupied by an obsticle
@@ -68,7 +69,7 @@ class DroneTestCase(unittest.TestCase):
             d1 = Drone(g1, init_pos, id)
             
     def test_drone_location_one_hot(self):
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         
         init_pos = Point(4,3) # Occupied by an obsticle
@@ -81,7 +82,7 @@ class DroneTestCase(unittest.TestCase):
         
     def test_move_drone(self):
         #  Grid
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
@@ -98,7 +99,7 @@ class DroneTestCase(unittest.TestCase):
         
     def test_move_drone_to_obsticle(self):
         #  Grid
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
@@ -110,7 +111,7 @@ class DroneTestCase(unittest.TestCase):
         
     def test_observe_surrounding(self):
         #  Grid
-        g1 = Grid(10, 5, SEED)
+        g1 = Grid(10, 5, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
@@ -129,34 +130,35 @@ class DroneTestCase(unittest.TestCase):
 class GridTestCase(unittest.TestCase):
     
     def test_init_grid(self):
-        g1 = Grid(size_y = 30, size_x = 20, seed=SEED)
+        g1 = Grid(30, 20, TARGET_SEED, OBSTACLES_SEED)
         self.assertEqual(g1._grid.shape, (30, 20))
         self.assertEqual((g1._grid == None).sum(), 30*20, "Expecting all entries to be None")
         
     def test_set_obsticles(self):
-        g1 = Grid(30, 15, SEED)
+        g1 = Grid(30, 15, TARGET_SEED, OBSTACLES_SEED)
         g1.set_obstacles(10)
         self.assertEqual((g1._grid == "O").sum(), 10, "Expecting 10 entries to be marked as obsticles")
         self.assertEqual((g1._grid == None).sum(), 30*15-10, "Expecting all entries but one to be None")
            
     def test_set_reachable_target(self):
         # Grid
-        g1 = Grid(10, 5, seed=2)
+        g1 = Grid(10, 5, target_seed=2, obstacles_seed=2)
         g1.set_obstacles(10)
         # Drone
         init_pos = Point(0,0)
         id = 99
         d1 = Drone(g1, init_pos, id)
         # Target
-        g1.set_target() # Target will be in (3, 0) because of seed
+        g1.set_target() # Target will be in (0, 3) because of seed
+
         # Assertions
-        self.assertEqual(g1.get_value(Point(3, 0)), "T", "Tested point is expected to be an target")
+        self.assertEqual(g1.get_value(Point(0, 3)), "T", "Tested point is expected to be an target")
         self.assertEqual((g1._grid == "T").sum(), 1, "Expecting one entrie to be marked as target")
         self.assertEqual((g1._grid == None).sum(), 10*5-10-1-1, "Expecting all other entries to be None")
         
     def test_set_reachable_target_too_many_obsticles(self):
         # Grid
-        g1 = Grid(10, 5, seed=2)
+        g1 = Grid(10, 5, target_seed=2, obstacles_seed=2)
         g1.set_obstacles(10*5 - 5)
         # Drone
         init_pos = Point(3,0)
@@ -168,7 +170,7 @@ class GridTestCase(unittest.TestCase):
         
     def test_set_reachable_target_many_obstacles(self):
         # Grid
-        g1 = Grid(10, 5, seed=2)
+        g1 = Grid(10, 5, target_seed=2, obstacles_seed=2)
         g1.set_obstacles(10*5 - 20)
         # Drone
         init_pos = Point(1,0)
@@ -176,22 +178,20 @@ class GridTestCase(unittest.TestCase):
         d1 = Drone(g1, init_pos, id)
         # Actions
         g1.set_target()
-        # Assertions
-        self.assertEqual(g1.get_value(Point(1, 1)), "T", "Tested point is expected to be an target")
 
-        
-class SimulatorTestCase(unittest.TestCase):
-    
+        # Assertions
+        self.assertEqual(g1.get_value(Point(0, 4)), "T", "Tested point is expected to be an target")
+
     def test_one_drone_random_walk(self):
         # Grid
-        g1 = Grid(10, 5, seed=2)
+        g1 = Grid(10, 5, target_seed=2, obstacles_seed=2)
         g1.set_obstacles(10)
         # Drone
-        init_pos = Point(0,0)
+        init_pos = Point(0, 0)
         id = 99
         d1 = Drone(g1, init_pos, id)
         # Target
-        g1.set_target() # Target will be in (3, 0) because of seed
+        g1.set_target()  # Target will be in (3, 0) because of seed
         # Actions
         random.seed(6)
         move_count = 0
@@ -200,25 +200,25 @@ class SimulatorTestCase(unittest.TestCase):
             try:
                 d1.move(rand_direction)
                 move_count += 1
-                #print("\n", g1)
+                # print("\n", g1)
             except (PositioningError, IndexError):
-                pass    # Try again
-        
+                pass  # Try again
+
         # Assertions
         self.assertEqual(d1.get_trace()[0], Point(0, 0), "Expecting initial point in trace")
         self.assertEqual(len(d1.get_trace()), move_count, "Expecting 12 entries in trace with seed=6")
-    
-    
+
     def test_three_drones_random_walk(self):
         # Grid
-        g1 = Grid(10, 5, seed=2)
+        g1 = Grid(10, 5, target_seed=3, obstacles_seed=3)
         g1.set_obstacles(10)
         # Drones
-        d1 = Drone(g1, Point(0,0), 1)
-        d2 = Drone(g1, Point(0,1), 2)
-        d3 = Drone(g1, Point(0,2), 3)
+        d1 = Drone(g1, Point(0, 0), 1)
+        d2 = Drone(g1, Point(0, 1), 2)
+        d3 = Drone(g1, Point(0, 2), 3)
         # Target
-        g1.set_target() # Target will be in (2, 1) because of seed
+        g1.set_target()  # Target will be in (2, 8) because of seed
+
         # Actions
         random.seed(6)
         while True:
@@ -229,16 +229,49 @@ class SimulatorTestCase(unittest.TestCase):
                     drone.move(rand_direction)
                 except (PositioningError, IndexError):
                     #  Reward function here...
-                    pass    # Try again
+                    pass  # Try again
                 common_surrounding += drone.observe_surrounding()
-            #print("\n", g1, "\ncommon_surrounding:\n", common_surrounding)
+            # print("\n", g1, "\ncommon_surrounding:\n", common_surrounding)
             if "T" in common_surrounding:
                 break
-            
+
         # Assertions
         self.assertEqual(d1.get_trace()[0], Point(0, 0), "Expecting initial point in trace")
-        self.assertEqual(len(d2.get_trace()), 2, "Expecting 2 entries in trace with seed=6")
+        self.assertEqual(len(d2.get_trace()), 21, "Expecting 2 entries in trace with seed=6")
+
         
+class SimulatorTestCase(unittest.TestCase):
+
+    def test_simulator_one_drone(self):
+        env = Simulator(num_obstacles=10,
+                        grid_size=(10, 10),
+                        initial_positions={1: Point(0, 0)},
+                        target_seed=42,
+                        obstacles_seed=24)
+
+        env.define_state(drone_location=True,
+                         discovery_map=True,
+                         drone_observed_surroundings=True)
+
+        def reward_fkt(drone, move_direction, discovery_map, step_num):
+            try:
+                drone.move(move_direction)
+                if "T" in drone.observe_surrounding():
+                    return 1, True
+                else:
+                    return 0, False
+            except (PositioningError, IndexError):
+                return -1, True  # We hit an obstacle or tried to exit the grid
+
+        env.set_reward_function(reward_fkt)
+
+        actions = [2, 2, 1, 1, 0, 1]
+
+        for a in actions:
+            s, r, d = env.step({1:a})
+
+        self.assertEqual(s[1][13], 1, "Last position of drone is on 13th entry in state array")
+
         
 if __name__ == '__main__':
     unittest.main()

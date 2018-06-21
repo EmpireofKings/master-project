@@ -1,7 +1,10 @@
 # Simulator module
-import numpy as np 
+import numpy as np
 
+from inspect import signature
 from enum import Enum
+
+
 class Direction(Enum):
     UP = 0
     RIGHT = 1
@@ -12,8 +15,10 @@ class Direction(Enum):
 class PositioningError(Exception):
     pass
 
+
 class TargetUnreachableError(Exception):
     pass
+
 
 class Point(object):
     """2D Point"""
@@ -22,10 +27,10 @@ class Point(object):
         self.Y = y
         
     def __str__(self):
-        return "[X=%s, Y=%s]"%(self.X, self.Y)
+        return "[X=%s, Y=%s]" % (self.X, self.Y)
     
     def __repr__(self):
-        return "<X=%s, Y=%s>"%(self.X, self.Y)
+        return "<X=%s, Y=%s>" % (self.X, self.Y)
     
     def __eq__(self, other):
         if isinstance(other, Point):
@@ -59,7 +64,8 @@ class Point(object):
     
     def get_y(self):
         return self.Y
-    
+
+
 class Drone(object):
     
     def __init__(self, grid, position, id):
@@ -69,10 +75,12 @@ class Drone(object):
         self.id = id
         self.trace = []
         self.grid.position_drone(self)
-        
-    
+
     def __str__(self):
         return "Drone %s at position %s" % (self.id, self.position)
+
+    def __hash__(self):
+        return hash(self.id)
     
     def move(self, direction):
         self.grid.move_drone(self, direction)   # possibly throws exception
@@ -86,14 +94,19 @@ class Drone(object):
             p = self.position + d
             surrounding.append(self.grid.get_value(p))
         return surrounding
+
+    def observe_obstacles(self):
+        return (np.array(self.observe_surrounding()) == "O").astype(np.int8)
     
     def get_position(self):
         return self.position
+
+    def get_position_flat(self):
+        return self.position.get_y() * self.grid.size[1] + self.position.get_x()
     
     def get_position_one_hot(self):
-        pos_flat = self.position.get_y() * self.grid.size[1] + self.position.get_x()
-        pos_one_hot = np.zeros(self.grid.size).ravel()
-        pos_one_hot[pos_flat] = 1
+        pos_one_hot = np.zeros(self.grid.size, dtype=np.int8).ravel()
+        pos_one_hot[self.get_position_flat()] = 1
         return pos_one_hot
         
     def get_id(self):
@@ -105,10 +118,12 @@ class Drone(object):
         
 class Grid(object):
 
-    def __init__(self, size_y, size_x, seed):
+    def __init__(self, size_y, size_x, target_seed, obstacles_seed):
         self._grid = np.full([size_y, size_x], None)
+        self.discovery_map = np.zeros(size_y * size_x, dtype=np.int8)
         self.size = (size_y, size_x)
-        self.rs = np.random.RandomState(seed)
+        self.rs_target = np.random.RandomState(target_seed)
+        self.rs_obstacles = np.random.RandomState(obstacles_seed)
         self.drone = None
         self.are_drones_set = False
         self.are_obstacles_set = False
@@ -120,8 +135,8 @@ class Grid(object):
         """Obstacles appear in grid as "O"."""
         i = 0
         while i < num_obstacles:
-            y = self.rs.randint(low=0, high=self.size[0])
-            x = self.rs.randint(low=0, high=self.size[1])
+            y = self.rs_obstacles.randint(low=0, high=self.size[0])
+            x = self.rs_obstacles.randint(low=0, high=self.size[1])
             try:
                 self.set_value(Point(x, y), "O")
                 i += 1
@@ -135,14 +150,14 @@ class Grid(object):
         successful = False
         cells = self.asdict()
         while not successful:
-            p = self.rs.choice(list(cells))
+            p = self.rs_target.choice(list(cells))
             if cells[p] is None and self._target_reachable(p):
                 self.set_value(p, "T")
                 successful = True
             else:
                 del cells[p]
                 if len(cells) == 0:
-                    raise TargetUnreachableError("Too many obsticles to set reachable target")
+                    raise TargetUnreachableError("Too many obstacles to set reachable target")
     
     def asdict(self):
         """Returns a dict with cells as keys and content as value"""
@@ -154,9 +169,8 @@ class Grid(object):
         return result
     
     def _target_reachable(self, target):
-        filled_grid = np.zeros(self.size) # Memory for visited cells
+        filled_grid = np.zeros(self.size)  # Memory for visited cells
         return self._flood_fill(filled_grid, target)
-        
         
     def _flood_fill(self, filled_grid, current_pos):
         """This is called recursive"""
@@ -181,18 +195,23 @@ class Grid(object):
         self.drone = drone
         p = drone.get_position()
         self.set_value(p, drone.get_id())
+        self.discovery_map += drone.get_position_one_hot()
         self.are_drones_set = True
         
     def move_drone(self, drone, direction):
         p = drone.get_position()
-        self.set_value(p + direction, drone.get_id())   # possibly throws exception
+        p_new = p + direction
+        self.set_value(p_new, drone.get_id())   # possibly throws exception
         self.reset_value(p)
+
+        p_new_flat = p_new.get_y() * self.size[1] + p_new.get_x()
+        self.discovery_map[p_new_flat] += 1  # drone.get_position_one_hot() not possible: position not yet updated
         
     def get_value(self, point):
         x = point.get_x()
         y = point.get_y()
         if x < 0 or y < 0 or x >= self.size[1] or y >= self.size[0]:
-            return "O"   # Tread cells outsied of grid borders as obsticles
+            return "O"   # Treat cells outside of grid borders as obstacles
         else:
             return self._grid[y, x] 
     
@@ -209,8 +228,11 @@ class Grid(object):
     def reset_value(self, point):
         self._grid[point.get_y(), point.get_x()] = None
         
-    def get_obsticles_vector(self):
+    def get_obstacles_flat(self):
         return (self._grid == "O").astype(int).ravel()
+
+    def get_discovery_map_flat(self):
+        return self.discovery_map.copy().ravel()
     
     def is_accessible(self, point):
         # Check for outside grid
@@ -224,4 +246,82 @@ class Grid(object):
             return False
         else:
             return True
-        
+
+
+class Simulator(object):
+
+    def __init__(self, num_obstacles, grid_size, initial_positions, target_seed, obstacles_seed):
+
+        self.grid = Grid(grid_size[0], grid_size[1], target_seed, obstacles_seed)
+        self.grid.set_obstacles(num_obstacles)
+
+        self.drones = {}
+        for id, p in initial_positions.items():
+            drone = Drone(self.grid, position=p, id=id)
+            self.drones[id] = drone
+
+        self.grid.set_target()
+
+        self.step_num = 0
+        self.reward_fkt = None
+        self.get_state = None
+
+    def define_state(self,
+                     drone_location=True,
+                     discovery_map=False,
+                     drone_observed_surroundings=False):
+
+        if drone_location and not discovery_map and not drone_observed_surroundings:
+            def get_state(drone_id):
+                return self.drones[drone_id].get_position_one_hot()
+
+        elif drone_location and discovery_map and not drone_observed_surroundings:
+            def get_state(drone_id):
+                return np.concatenate((self.drones[drone_id].get_position_one_hot(),
+                                       self.grid.get_discovery_map_flat()))
+
+        elif drone_location and discovery_map and drone_observed_surroundings:
+            def get_state(drone_id):
+                return np.concatenate((self.drones[drone_id].get_position_one_hot(),
+                                       self.grid.get_discovery_map_flat(),
+                                       self.drones[drone_id].observe_obstacles()))
+        else:
+            raise ValueError("State definition not covered by simulator")
+
+        self.get_state = get_state
+
+    def set_reward_function(self, reward_fkt):
+        allowed_params = ["drone", "move_direction", "discovery_map", "step_num"]
+        param_names = signature(reward_fkt).parameters
+        for param_name in param_names:
+            assert param_name in allowed_params, "Reward function has invalid parameter name. Allow are %s"\
+                                                 % allowed_params
+
+        self.reward_fkt = reward_fkt
+
+    def step(self, actions):
+        assert isinstance(actions, dict), "Expecting actions to be dict with <key=drone id> and <value=action index>"
+
+        if self.reward_fkt is not None:
+            rewards = {}
+            dones = {}
+            next_states = {}
+            for id, a in actions.items():
+                reward, done = self.reward_fkt(drone=self.drones[id],
+                                               move_direction=Direction(a),
+                                               discovery_map=self.grid.get_discovery_map_flat(),
+                                               step_num=self.step_num)
+
+                assert reward is not None, "Return function returned None reward for drone %s and action index %s"\
+                                           % (self.drones[id], a)
+                assert done is not None, "Expect reward function to return True if episode ended or False otherwise." \
+                                         "Returned None for drone %s and action index %s" % (self.drones[id], a)
+                rewards[id] = reward
+                dones[id] = done
+                next_states[id] = self.get_state(id)
+
+            self.step_num += 1
+
+            return next_states, rewards, dones
+        else:
+            raise ValueError("Reward function not specified.")
