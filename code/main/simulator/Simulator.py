@@ -135,8 +135,9 @@ class Grid(object):
         """Obstacles appear in grid as "O"."""
         i = 0
         while i < num_obstacles:
-            y = self.rs_obstacles.randint(low=0, high=self.size[0])
-            x = self.rs_obstacles.randint(low=0, high=self.size[1])
+            # No obstacles at the borders
+            y = self.rs_obstacles.randint(low=1, high=self.size[0]-1)
+            x = self.rs_obstacles.randint(low=1, high=self.size[1]-1)
             try:
                 self.set_value(Point(x, y), "O")
                 i += 1
@@ -250,41 +251,45 @@ class Grid(object):
 
 class Simulator(object):
 
-    def __init__(self, num_obstacles, grid_size, initial_positions, target_seed, obstacles_seed):
+    def __init__(self, drone_id, grid_size):
+        self.drone_id = drone_id
+        self.grid_size = grid_size
+        self.step_num = 0
+        self.grid = None
+        self.drones = None
+        self.reward_fkt = None
+        self.get_state = None
 
-        self.grid = Grid(grid_size[0], grid_size[1], target_seed, obstacles_seed)
+    def build_world(self, initial_position, num_obstacles, target_seed, obstacles_seed):
+
+        self.grid = Grid(self.grid_size[0], self.grid_size[1], target_seed, obstacles_seed)
         self.grid.set_obstacles(num_obstacles)
 
-        self.drones = {}
-        for id, p in initial_positions.items():
-            drone = Drone(self.grid, position=p, id=id)
-            self.drones[id] = drone
+        self.drone = Drone(self.grid, position=initial_position, id=self.drone_id)
 
         self.grid.set_target()
 
         self.step_num = 0
-        self.reward_fkt = None
-        self.get_state = None
 
     def define_state(self,
                      drone_location=True,
                      discovery_map=False,
-                     drone_observed_surroundings=False):
+                     drone_observed_obstacles=False):
 
-        if drone_location and not discovery_map and not drone_observed_surroundings:
-            def get_state(drone_id):
-                return self.drones[drone_id].get_position_one_hot()
+        if drone_location and not discovery_map and not drone_observed_obstacles:
+            def get_state():
+                return self.drone.get_position_one_hot()
 
-        elif drone_location and discovery_map and not drone_observed_surroundings:
-            def get_state(drone_id):
-                return np.concatenate((self.drones[drone_id].get_position_one_hot(),
+        elif drone_location and discovery_map and not drone_observed_obstacles:
+            def get_state():
+                return np.concatenate((self.drone.get_position_one_hot(),
                                        self.grid.get_discovery_map_flat()))
 
-        elif drone_location and discovery_map and drone_observed_surroundings:
-            def get_state(drone_id):
-                return np.concatenate((self.drones[drone_id].get_position_one_hot(),
+        elif drone_location and discovery_map and drone_observed_obstacles:
+            def get_state():
+                return np.concatenate((self.drone.get_position_one_hot(),
                                        self.grid.get_discovery_map_flat(),
-                                       self.drones[drone_id].observe_obstacles()))
+                                       self.drone.observe_obstacles()))
         else:
             raise ValueError("State definition not covered by simulator")
 
@@ -299,29 +304,29 @@ class Simulator(object):
 
         self.reward_fkt = reward_fkt
 
-    def step(self, actions):
-        assert isinstance(actions, dict), "Expecting actions to be dict with <key=drone id> and <value=action index>"
+    def step(self, action_idx):
+        assert isinstance(action_idx, int), "got %s with value %s" % (type(action_idx), action_idx)
 
         if self.reward_fkt is not None:
-            rewards = {}
-            dones = {}
-            next_states = {}
-            for id, a in actions.items():
-                reward, done = self.reward_fkt(drone=self.drones[id],
-                                               move_direction=Direction(a),
-                                               discovery_map=self.grid.get_discovery_map_flat(),
-                                               step_num=self.step_num)
 
-                assert reward is not None, "Return function returned None reward for drone %s and action index %s"\
-                                           % (self.drones[id], a)
-                assert done is not None, "Expect reward function to return True if episode ended or False otherwise." \
-                                         "Returned None for drone %s and action index %s" % (self.drones[id], a)
-                rewards[id] = reward
-                dones[id] = done
-                next_states[id] = self.get_state(id)
+            result = self.reward_fkt(drone=self.drone,
+                                           move_direction=Direction(action_idx),
+                                           discovery_map=self.grid.get_discovery_map_flat(),
+                                           step_num=self.step_num)
+
+            assert isinstance(result, tuple), "Expecting reward function to return tuple of (reward, done)"
+
+            reward, done = result
+
+            assert reward is not None, "Return function returned None reward for drone %s and action index %s"\
+                                       % (self.drones[id], a)
+            assert done is not None, "Expect reward function to return True if episode ended or False otherwise." \
+                                     "Returned None for drone %s and action index %s" % (self.drones[id], a)
+
+            next_state = self.get_state()
 
             self.step_num += 1
 
-            return next_states, rewards, dones
+            return next_state, reward, done
         else:
             raise ValueError("Reward function not specified.")
