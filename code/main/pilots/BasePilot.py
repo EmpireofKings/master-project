@@ -14,12 +14,12 @@ class BasePilot(object):
     variable <hp> represents the hyperparameters. Following are the options
 
     * drone_id:                                 int
-    * grid_size:                                (int: len y-axis, int: len x-axis)
+    * grid_size:                                tuple, (int: len y-axis, int: len x-axis)
     * state_include_drone_location:             bool
     * state_include_discovery_map:              bool
     * state_include_drone_observed_obstacles:   bool
     * trainer_seed:                             int
-    * metric_location_action_values:            Point
+    * metric_location_action_values:            tuple, (int: x, int: y)
     * metric_gather_train:                      bool
     * num_episodes:                             int
     * max_steps_per_episode:                    int, after how many steps episode should be forced to end
@@ -39,7 +39,7 @@ class BasePilot(object):
         "state_include_discovery_map": True,
         "state_include_drone_observed_obstacles": False,
         "trainer_seed": 1,
-        "metric_location_action_values": Point(0, 0),
+        "metric_location_action_values": (0, 0),
         "metric_gather_train": True,
         "num_episodes": 2,
         "max_steps_per_episode": 2,
@@ -111,37 +111,43 @@ class BasePilot(object):
 
         raise NotImplementedError("Using method of base class, please implement custom method!")
 
+    def reset(self, hp):
+        """
+        Resets the pilot and updates hyperparameters
+
+        :param hp:
+        :return:
+        """
+
+        raise NotImplementedError("Using method of base class, please implement custom method!")
+
     def run(self):
         pilot = self
         hp = pilot.hp
 
         # Setup environment
-        env = Simulator(drone_id=hp["drone_id"],
+        self.env = Simulator(drone_id=hp["drone_id"],
                         grid_size=hp["grid_size"])
-        env.set_reward_function(pilot.reward_fkt)
-        env.define_state(drone_location=hp["state_include_drone_location"],
+        self.env.set_reward_function(pilot.reward_fkt)
+        self.env.define_state(drone_location=hp["state_include_drone_location"],
                          discovery_map=hp["state_include_discovery_map"],
                          drone_observed_obstacles=hp["state_include_drone_observed_obstacles"])
 
-        trainer = Trainer(env, pilot,
+        self.trainer = Trainer(self.env, pilot,
                           starting_point_strategy=hp["starting_point_strategy"],
                           e_greedy_strategy=hp["e_greedy_strategy"],
                           seed=hp["trainer_seed"])
 
-        trainer.set_metrics(location_action_values=hp["metric_location_action_values"],
+        self.trainer.set_metrics(location_action_values=hp["metric_location_action_values"],
                             gather_train=hp["metric_gather_train"])
 
-        test_rewards, train_rewards, action_values = trainer.train(
+        return self.trainer.train(
             num_episodes=hp["num_episodes"],
             max_steps_per_episode=hp["max_steps_per_episode"],
             e_greedy=hp["e_greedy"],
             num_obstacles=hp["num_obstacles"],
             target_seeds=hp["target_seeds"],
             obstacle_seeds=hp["obstacle_seeds"])
-
-        print("test rewards", test_rewards)
-        print("train rewards", train_rewards)
-        print("action values", action_values)
 
 
 if __name__ == "__main__":

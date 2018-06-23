@@ -1,5 +1,6 @@
 import numpy as np
 
+import csv
 import sys
 import os
 sys.path.append(os.path.abspath(".")) #Where Simulator.py is located
@@ -24,7 +25,6 @@ class Trainer(object):
         self.rs = np.random.RandomState(seed)
 
         # Metrics
-        self.global_discovery_map = np.zeros(self.env.grid_size, dtype=np.int8)
         self.train_rewards = None
         self.test_rewards = None
         self.action_values = []
@@ -42,7 +42,7 @@ class Trainer(object):
         :param gather_train:
         :return:
         """
-        self.location_action_values = location_action_values
+        self.location_action_values = Point.fromtuple(location_action_values)
         self.gather_train_metrics = gather_train
         self.test_frequency = test_frequency
 
@@ -55,6 +55,12 @@ class Trainer(object):
             self.test_rewards = []
             if gather_train:
                 self.train_rewards = []
+
+        # State for action values
+        # TODO: Adapt for different state definitions
+        drone_location_flat = np.zeros(self.env.grid_size).ravel()
+        drone_location_flat[location_action_values[1] * self.env.grid_size[0] + location_action_values[0]] = 1
+        self.action_values_state = np.append(drone_location_flat, np.zeros(self.env.grid_size).ravel())
 
     def _evaluate_e_greedy_strategy(self, e_greedy_strategy, e_greedy=None):
 
@@ -114,7 +120,6 @@ class Trainer(object):
 
         return get_next_starting_point
 
-
     def train(self, num_episodes, max_steps_per_episode, e_greedy,
               num_obstacles, target_seeds, obstacle_seeds):
         """
@@ -134,6 +139,8 @@ class Trainer(object):
         self.target_seeds = target_seeds
         self.obstacle_seeds = obstacle_seeds
 
+        self.global_discovery_map = np.zeros(self.env.grid_size, dtype=np.int64).ravel()
+
         get_action = self._evaluate_e_greedy_strategy(self.e_greedy_strategy, e_greedy)
         get_next_starting_point = self._evaluate_starting_point_strategy()
 
@@ -145,10 +152,15 @@ class Trainer(object):
 
         for episode in range(num_episodes):
 
+            if episode % 100 == 0:
+                print("Episode", episode)
+
             starting_point = get_next_starting_point()
 
             # Train
             self.run_episode(starting_point, get_action, id)
+
+            self.global_discovery_map += self.env.grid.discovery_map
 
             if self.gather_train_metrics:
                 self.gather_metrics(episode, is_train=True)
@@ -177,8 +189,6 @@ class Trainer(object):
 
             next_state, reward, done = self.env.step(action_idx)
 
-            self.global_discovery_map += self.env.drone.get_position_flat()
-
             self.pilot.store_step(state=state,
                                   action_idx=action_idx,
                                   reward=reward,
@@ -199,10 +209,11 @@ class Trainer(object):
         if is_train:
             self.pilot.learn()
 
+
     def store_reward(self, reward):
         self.episode_rewards.append(reward)
 
-    def gather_metrics(self, episode, state=None, is_train=False):
+    def gather_metrics(self, episode, is_train=False):
         # store previous rewards and reset buffer
         if self.starting_point_strategy == "corners":
             if is_train:
@@ -218,4 +229,16 @@ class Trainer(object):
 
         # Store action values for test only
         if not is_train:
-            self.action_values.append(self.pilot.get_action_values(state))
+            self.action_values.append(self.pilot.get_action_values(self.action_values_state))
+
+    def grid_search(self, runs, num_episodes, max_steps_per_episode,
+              num_obstacles, target_seeds, obstacle_seeds, hp_ranges):
+
+        regularization_factors = hp_ranges["regularization_factors"]
+        critic_factors = hp_ranges["critic_factors"]
+        reward_decays = hp_ranges["reward_decays"]
+
+        for run in range(runs):
+            raise NotImplementedError()
+
+        # action_values = np.squeeze(np.array(action_values))

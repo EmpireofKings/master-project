@@ -25,6 +25,10 @@ class Point(object):
     def __init__(self, x, y):
         self.X = x
         self.Y = y
+
+    @staticmethod
+    def fromtuple(position_tuple):
+        return Point(position_tuple[0], position_tuple[1])
         
     def __str__(self):
         return "[X=%s, Y=%s]" % (self.X, self.Y)
@@ -120,7 +124,7 @@ class Grid(object):
 
     def __init__(self, size_y, size_x, target_seed, obstacles_seed):
         self._grid = np.full([size_y, size_x], None)
-        self.discovery_map = np.zeros(size_y * size_x, dtype=np.int8)
+        self.discovery_map = np.zeros(size_y * size_x, dtype=np.int64)
         self.size = (size_y, size_x)
         self.rs_target = np.random.RandomState(target_seed)
         self.rs_obstacles = np.random.RandomState(obstacles_seed)
@@ -202,11 +206,19 @@ class Grid(object):
     def move_drone(self, drone, direction):
         p = drone.get_position()
         p_new = p + direction
-        self.set_value(p_new, drone.get_id())   # possibly throws exception
-        self.reset_value(p)
-
-        p_new_flat = p_new.get_y() * self.size[1] + p_new.get_x()
-        self.discovery_map[p_new_flat] += 1  # drone.get_position_one_hot() not possible: position not yet updated
+        try:
+            self.set_value(p_new, drone.get_id())   # possibly throws exception
+            self.reset_value(p)
+            p_new_flat = p_new.get_y() * self.size[1] + p_new.get_x()
+            self.discovery_map[p_new_flat] += 1  # drone.get_position_one_hot() not possible: position not yet updated
+        except IndexError as e:
+            p_flat = p.get_y() * self.size[1] + p.get_x()
+            self.discovery_map[p_flat] += 1  # drone.get_position_one_hot() not possible: position not yet updated
+            raise e
+        except PositioningError as e:
+            p_flat = p.get_y() * self.size[1] + p.get_x()
+            self.discovery_map[p_flat] += 1  # drone.get_position_one_hot() not possible: position not yet updated
+            raise e
         
     def get_value(self, point):
         x = point.get_x()
@@ -310,9 +322,9 @@ class Simulator(object):
         if self.reward_fkt is not None:
 
             result = self.reward_fkt(drone=self.drone,
-                                           move_direction=Direction(action_idx),
-                                           discovery_map=self.grid.get_discovery_map_flat(),
-                                           step_num=self.step_num)
+                                     move_direction=Direction(action_idx),
+                                     discovery_map=self.grid.get_discovery_map_flat(),
+                                     step_num=self.step_num)
 
             assert isinstance(result, tuple), "Expecting reward function to return tuple of (reward, done)"
 

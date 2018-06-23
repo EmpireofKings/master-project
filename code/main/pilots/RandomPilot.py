@@ -18,7 +18,7 @@ class RandomPilot(BasePilot):
         "state_include_discovery_map": True,
         "state_include_drone_observed_obstacles": False,
         "trainer_seed": 1,
-        "metric_location_action_values": Point(0, 0),
+        "metric_location_action_values": (0, 0),
         "metric_gather_train": True,
         "num_episodes": 5,
         "max_steps_per_episode": 5,
@@ -35,12 +35,15 @@ class RandomPilot(BasePilot):
     def get_action_values(self, state):
         return np.random.rand(self.action_size)
 
-
     def store_step(self, state, action_idx, reward, done, next_state):
         pass
 
     def learn(self):
         pass
+
+    def reset(self, hp):
+        for k, v in hp.items():
+            self.hp[k] = v
 
     @staticmethod
     def reward_fkt(drone, move_direction, discovery_map, step_num):
