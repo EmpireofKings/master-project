@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import json
 import csv
 import sys
@@ -295,4 +297,35 @@ class Trainer(object):
                         with open(file_name, "a") as csvfile:
                             csvfile.write(data)
 
+    @staticmethod
+    def plot_data(csv_file):
+        data = pd.read_csv(csv_file, quotechar='"', skiprows=1, header=None).values
 
+        def rolling(data, window):
+            return np.convolve(data, np.ones((window,)) / window, mode="valid")
+
+        labels = data[:, 0]
+        hyperparams = data[:, 1]
+        data = data[:, 2:].astype(np.float64)
+
+        window = 700
+        for i in range(0, data.shape[0], 10):
+            mean = rolling(data[i, :], window)
+            std = rolling(data[i+1, :], window)
+            x = range(len(mean))
+
+            hp = json.loads(hyperparams[i].replace("'", '"'))
+
+            plt.plot(x, mean, label="test_reward (rolling mean")
+            plt.fill_between(x, mean - std, mean + std, color='#888888', alpha=0.4)
+            plt.title("entropy_factor: %s, critic_factor %s, reward_decay %s" % (hp["entropy_factor"], hp["critic_factor"], hp["reward_decay"]))
+            plt.legend()
+            plt.xlabel("Episodes")
+            plt.ylabel("test reward")
+            plt.show()
+
+
+
+if __name__ == "__main__":
+
+    Trainer.plot_data("../pilots/grid_search_result.csv")
