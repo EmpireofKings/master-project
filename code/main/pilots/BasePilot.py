@@ -119,37 +119,43 @@ class BasePilot(object):
         :return:
         """
 
-        raise NotImplementedError("Using method of base class, please implement custom method!")
+        for k, v in hp.items():
+            self.hp[k] = v
 
-    def run(self):
+        # Reset environment, too
+        self.setup()
+
+    def setup(self):
         pilot = self
         hp = pilot.hp
 
         # Setup environment
         self.env = Simulator(drone_id=hp["drone_id"],
-                        grid_size=hp["grid_size"])
+                             grid_size=hp["grid_size"])
         self.env.set_reward_function(pilot.reward_fkt)
         self.env.define_state(drone_location=hp["state_include_drone_location"],
-                         discovery_map=hp["state_include_discovery_map"],
-                         drone_observed_obstacles=hp["state_include_drone_observed_obstacles"])
+                              discovery_map=hp["state_include_discovery_map"],
+                              drone_observed_obstacles=hp["state_include_drone_observed_obstacles"])
 
         self.trainer = Trainer(self.env, pilot,
-                          starting_point_strategy=hp["starting_point_strategy"],
-                          e_greedy_strategy=hp["e_greedy_strategy"],
-                          seed=hp["trainer_seed"])
+                               starting_point_strategy=hp["starting_point_strategy"],
+                               e_greedy_strategy=hp["e_greedy_strategy"],
+                               seed=hp["trainer_seed"])
 
         self.trainer.set_metrics(location_action_values=hp["metric_location_action_values"],
-                            gather_train=hp["metric_gather_train"])
+                                 gather_train=hp["metric_gather_train"])
 
+    def run(self):
         return self.trainer.train(
-            num_episodes=hp["num_episodes"],
-            max_steps_per_episode=hp["max_steps_per_episode"],
-            e_greedy=hp["e_greedy"],
-            num_obstacles=hp["num_obstacles"],
-            target_seeds=hp["target_seeds"],
-            obstacle_seeds=hp["obstacle_seeds"])
+            num_episodes=self.hp["num_episodes"],
+            max_steps_per_episode=self.hp["max_steps_per_episode"],
+            e_greedy=self.hp["e_greedy"],
+            num_obstacles=self.hp["num_obstacles"],
+            target_seeds=self.hp["target_seeds"],
+            obstacle_seeds=self.hp["obstacle_seeds"])
 
 
 if __name__ == "__main__":
     pilot = BasePilot()
+    pilot.setup()
     pilot.run()

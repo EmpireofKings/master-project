@@ -1,11 +1,12 @@
 import numpy as np
-
+import json
 import csv
 import sys
 import os
 sys.path.append(os.path.abspath(".")) #Where Simulator.py is located
 
 from Simulator import *
+from datetime import datetime
 
 class Trainer(object):
 
@@ -231,14 +232,67 @@ class Trainer(object):
         if not is_train:
             self.action_values.append(self.pilot.get_action_values(self.action_values_state))
 
-    def grid_search(self, runs, num_episodes, max_steps_per_episode,
-              num_obstacles, target_seeds, obstacle_seeds, hp_ranges):
+    def grid_search(self, runs, hp_ranges):
 
-        regularization_factors = hp_ranges["regularization_factors"]
+        file_name = datetime.now().strftime("%y%m%d-%H%M%S") + "/grid_search_result.csv"
+
+        if not os.path.exists(os.path.dirname(file_name)):
+                os.makedirs(os.path.dirname(file_name))
+
+        with open(file_name, "w") as file:
+            file.write("type,hyperparameters,values\n")
+
+
+
+        labels = np.array(["r_test_mean", "r_test_std", "a_up_mean", "a_right_mean", "a_down_mean", "a_left_mean",
+                           "a_up_std", "a_right_std", "a_down_std", "a_left_std"]).reshape(-1, 1)
+
+        entropy_factors = hp_ranges["entropy_factors"]
         critic_factors = hp_ranges["critic_factors"]
         reward_decays = hp_ranges["reward_decays"]
 
-        for run in range(runs):
-            raise NotImplementedError()
+        for entropy_factor in entropy_factors:
+            self.pilot.hp["entropy_factor"] = entropy_factor
+            for critic_factor in critic_factors:
+                self.pilot.hp["critic_factor"] = critic_factor
+                for reward_decay in reward_decays:
+                    self.pilot.hp["reward_decay"] = reward_decay
 
-        # action_values = np.squeeze(np.array(action_values))
+                    test_rewards_runs = []
+                    action_values_runs = []
+
+                    hyperparameters = json.dumps(self.pilot.hp).replace('"', "'")  # use `json.loads` to do the reverse
+                    print("Current hyperparameters", hyperparameters)
+
+                    try:
+
+                        for run in range(runs):
+
+                            test_rewards, train_rewards, action_values = self.pilot.run()
+                            test_rewards_runs.append(test_rewards)
+                            action_values_runs.append(action_values)
+
+                            self.pilot.reset()
+
+                        test_rewards_mean = np.array(test_rewards_runs).mean(axis=0)
+                        test_rewards_std = np.array(test_rewards_runs).std(axis=0)
+                        action_values_mean = np.squeeze(np.array(action_values_runs)).mean(axis=0)
+                        action_values_std = np.squeeze(np.array(action_values_runs)).std(axis=0)
+
+                        data = np.vstack((test_rewards_mean, test_rewards_std, action_values_mean.T, action_values_std.T))
+                        data = np.round(data, 4)
+
+                        hyperparameters = np.array([hyperparameters for x in range(data.shape[0])]).reshape(-1, 1)
+
+                        data = np.hstack((labels, hyperparameters, data))
+
+                        with open(file_name, "a") as csvfile:
+                            filewriter = csv.writer(csvfile)
+                            filewriter.writerows(data)
+
+                    except Exception as e:
+                        data = "Exception occurred: %s with hyperparameters %s" % (e, hyperparameters)
+                        with open(file_name, "a") as csvfile:
+                            csvfile.write(data)
+
+

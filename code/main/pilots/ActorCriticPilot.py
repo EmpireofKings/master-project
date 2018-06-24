@@ -24,10 +24,10 @@ class ActorCriticPilot(BasePilot):
         "trainer_seed": 1,
         "metric_location_action_values": (0, 0),
         "metric_gather_train": True,
-        "num_episodes": 5000,
-        "max_steps_per_episode": 15,
-        "e_greedy_strategy": "deterministic",
-        "e_greedy": 0.6,
+        "num_episodes": 2,
+        "max_steps_per_episode": 32,
+        "e_greedy_strategy": "constant",
+        "e_greedy": 0.8,
         "starting_point_strategy": "top_left_corner",
         "num_obstacles": 0,
         "target_seeds": [4],
@@ -64,8 +64,6 @@ class ActorCriticPilot(BasePilot):
         with tf.name_scope("policy_network"):
             policy_nn_raw = self.policy_nn()
             self.policy_network = tf.nn.softmax(policy_nn_raw)
-
-        print("Shape policy", self.policy_network)
 
         with tf.name_scope("critic_network"):
             self.critic_network = self.critic_nn()
@@ -218,11 +216,12 @@ class ActorCriticPilot(BasePilot):
         self.episode_rewards = []
 
     # Override
-    def reset(self, hp):
+    def reset(self, hp={}):
         tf.reset_default_graph()
+        self.__init__()     # Rebuild model
 
-        for k, v in hp.items():
-            self.hp[k] = v
+        super().reset(hp)
+
 
     # Override
     def reward_fkt(self, drone, move_direction, discovery_map, step_num):
@@ -245,27 +244,19 @@ class ActorCriticPilot(BasePilot):
     # Override
     def run(self):
         test_rewards, train_rewards, action_values = super().run()
-
-        labels = "test_rewards,action_value_up,action_value_right,action_value_down,action_value_left\r\n"
-        hyperparameters = json.dumps(self.hp)  # use `json.loads` to do the reverse
-
-        with open("hyperparameters.txt", "w") as file:
-            file.write(hyperparameters)
-
-        with open("result.csv", "w") as file:
-            file.write(labels)
-            for i in range(len(test_rewards)):
-                line = str(test_rewards[i]) + "," + ",".join(str(x) for x in action_values[i][0])
-                file.write(line + "\r\n")
-
-        print(self.env.grid)
-
-        print(self.trainer.global_discovery_map.reshape(self.hp["grid_size"]))
-
-
-
+        return test_rewards, train_rewards, action_values
 
 
 if __name__ == "__main__":
     pilot = ActorCriticPilot()
-    pilot.run()
+    pilot.setup()
+    #pilot.run()
+
+    hp_ranges = {
+        "entropy_factors": [0.01, 0.1, 0.2, 0.5],
+        "critic_factors": [0.01, 0.1, 0.2, 0.5],
+        "reward_decays": [1, 0.99, 0.8]
+    }
+
+    pilot.trainer.grid_search(runs=3,
+                              hp_ranges=hp_ranges)
